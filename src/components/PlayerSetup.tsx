@@ -4,14 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Minus } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { GameSettings } from "@/types/game";
+import { INITIAL_SCORE } from "@/utils/gameUtils";
 
 interface PlayerSetupProps {
-  onStartGame: (players: { id: string, name: string }[]) => void;
+  onStartGame: (players: { id: string, name: string }[], settings: GameSettings) => void;
 }
 
 const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
   const [playerCount, setPlayerCount] = useState(2);
   const [playerNames, setPlayerNames] = useState<string[]>(["Jogador 1", "Jogador 2"]);
+  const [initialScore, setInitialScore] = useState(INITIAL_SCORE);
+  const [enableJokers, setEnableJokers] = useState(false);
+  const [enableBluffing, setEnableBluffing] = useState(false);
   
   const handlePlayerCountChange = (increment: boolean) => {
     const newCount = increment ? Math.min(playerCount + 1, 10) : Math.max(playerCount - 1, 2);
@@ -37,11 +44,17 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
       name: name.trim() || `Jogador ${index + 1}`,
     }));
     
-    onStartGame(players);
+    const settings: GameSettings = {
+      initialScore,
+      enableJokers,
+      enableBluffing
+    };
+    
+    onStartGame(players, settings);
   };
   
   return (
-    <Card className="w-full max-w-md mx-auto bg-black/20 p-6 rounded-lg border-2 border-table-border">
+    <Card className="w-full max-w-md mx-auto bg-black/20 p-6 rounded-lg border-2 border-table-border animate-fade-in">
       <h2 className="text-xl font-bold text-white text-center mb-6">Mau Mau - Configuração</h2>
       
       <div className="space-y-6">
@@ -77,6 +90,21 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
           </div>
         </div>
         
+        <div>
+          <label htmlFor="initialScore" className="block text-white mb-2">
+            Pontuação Inicial
+          </label>
+          <Input 
+            id="initialScore"
+            type="number"
+            min="10"
+            max="1000"
+            value={initialScore}
+            onChange={(e) => setInitialScore(Math.max(10, Math.min(1000, parseInt(e.target.value) || 100)))}
+            className="bg-black/20 text-white border-white/30"
+          />
+        </div>
+        
         <div className="space-y-3">
           <h3 className="text-white font-medium">Nomes dos Jogadores</h3>
           
@@ -93,7 +121,38 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
           ))}
         </div>
         
-        <Button className="w-full bg-gold hover:bg-gold/80 text-black" onClick={handleSubmit}>
+        <div className="space-y-3 pt-2 border-t border-white/10">
+          <h3 className="text-white font-medium">Regras Especiais</h3>
+          
+          <div className="flex items-center justify-between">
+            <Label htmlFor="jokers" className="text-white">
+              Habilitar Curingas
+              <p className="text-xs text-white/70">Adiciona 4 curingas (+5 cartas, perde a vez)</p>
+            </Label>
+            <Switch 
+              id="jokers"
+              checked={enableJokers}
+              onCheckedChange={setEnableJokers}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <Label htmlFor="bluffing" className="text-white">
+              Habilitar Blefe
+              <p className="text-xs text-white/70">Permite jogar qualquer carta (estratégia)</p>
+            </Label>
+            <Switch 
+              id="bluffing"
+              checked={enableBluffing}
+              onCheckedChange={setEnableBluffing}
+            />
+          </div>
+        </div>
+        
+        <Button 
+          className="w-full bg-gold hover:bg-gold/80 text-black hover-scale" 
+          onClick={handleSubmit}
+        >
           Iniciar Jogo
         </Button>
       </div>

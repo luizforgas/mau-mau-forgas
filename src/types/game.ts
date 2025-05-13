@@ -1,6 +1,6 @@
 
-export type Suit = "hearts" | "diamonds" | "clubs" | "spades";
-export type Rank = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K" | "A";
+export type Suit = "hearts" | "diamonds" | "clubs" | "spades" | "joker";
+export type Rank = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K" | "A" | "joker";
 
 export interface Card {
   id: string;
@@ -18,6 +18,12 @@ export interface Player {
   isEliminated: boolean;
 }
 
+export interface GameSettings {
+  initialScore: number;
+  enableJokers: boolean;
+  enableBluffing: boolean;
+}
+
 export type Direction = "clockwise" | "counterclockwise";
 
 export interface GameState {
@@ -30,4 +36,5 @@ export interface GameState {
   gameEnded: boolean;
   winner: string | null;
   lastAction: string;
+  settings: GameSettings;
 }

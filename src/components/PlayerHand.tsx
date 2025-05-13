@@ -22,7 +22,7 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
     return (
       <div className="flex flex-wrap justify-center items-center gap-1 max-w-md mx-auto">
         {cards.map((_, index) => (
-          <div key={index} className="relative h-6 w-4">
+          <div key={index} className="relative h-6 w-4 hover-scale">
             <div className="absolute -left-1 top-0 bg-blue-700 h-6 w-4 border border-white rounded-sm" />
           </div>
         ))}
@@ -56,7 +56,7 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
         return (
           <div
             key={card.id}
-            className="absolute transition-all duration-300"
+            className="absolute transition-all duration-300 animate-fade-in"
             style={{ left: `${left}px` }}
           >
             <PlayingCard

@@ -35,6 +35,7 @@ const PlayingCard: React.FC<PlayingCardProps> = ({
     diamonds: "♦",
     clubs: "♣",
     spades: "♠",
+    joker: "★",
   };
   
   const rankDisplay = (rank: string) => {
@@ -43,6 +44,7 @@ const PlayingCard: React.FC<PlayingCardProps> = ({
       case 'K': return 'K';
       case 'Q': return 'Q';
       case 'J': return 'J';
+      case 'joker': return 'J';
       default: return rank;
     }
   };
@@ -59,30 +61,49 @@ const PlayingCard: React.FC<PlayingCardProps> = ({
     >
       {!isFaceDown && (
         <>
-          <div 
-            className={cn(
-              "absolute top-1 left-1 font-bold text-md",
-              card.isRed ? "text-card-red" : "text-card-black"
-            )}
-          >
-            {rankDisplay(card.rank)}
-          </div>
-          <div 
-            className={cn(
-              "absolute bottom-1 right-1 font-bold text-md rotate-180",
-              card.isRed ? "text-card-red" : "text-card-black"
-            )}
-          >
-            {rankDisplay(card.rank)}
-          </div>
-          <div 
-            className={cn(
-              "absolute inset-0 flex items-center justify-center text-2xl",
-              card.isRed ? "text-card-red" : "text-card-black"
-            )}
-          >
-            {suitSymbols[card.suit]}
-          </div>
+          {card.rank === "joker" ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className={cn(
+                "text-3xl font-bold",
+                card.isRed ? "text-card-red" : "text-card-black"
+              )}>
+                {suitSymbols.joker}
+              </div>
+              <div className={cn(
+                "text-lg font-bold mt-1",
+                card.isRed ? "text-card-red" : "text-card-black"
+              )}>
+                JOKER
+              </div>
+            </div>
+          ) : (
+            <>
+              <div 
+                className={cn(
+                  "absolute top-1 left-1 font-bold text-md",
+                  card.isRed ? "text-card-red" : "text-card-black"
+                )}
+              >
+                {rankDisplay(card.rank)}
+              </div>
+              <div 
+                className={cn(
+                  "absolute bottom-1 right-1 font-bold text-md rotate-180",
+                  card.isRed ? "text-card-red" : "text-card-black"
+                )}
+              >
+                {rankDisplay(card.rank)}
+              </div>
+              <div 
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center text-2xl",
+                  card.isRed ? "text-card-red" : "text-card-black"
+                )}
+              >
+                {suitSymbols[card.suit]}
+              </div>
+            </>
+          )}
         </>
       )}
       {isFaceDown && (

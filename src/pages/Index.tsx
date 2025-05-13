@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import PlayerSetup from "@/components/PlayerSetup";
 import GameBoard from "@/components/GameBoard";
 import GameOver from "@/components/GameOver";
-import { Card, Direction, GameState, Player } from "@/types/game";
+import { Card, Direction, GameState, Player, GameSettings } from "@/types/game";
 import { 
   createDeck, 
   shuffleDeck, 
@@ -15,7 +16,7 @@ import {
   checkMauMauStatus,
   drawCardsFromDeck,
   calculateScores,
-  INITIAL_SCORE
+  getDefaultGameSettings
 } from "@/utils/gameUtils";
 
 const Index = () => {
@@ -29,22 +30,23 @@ const Index = () => {
     gameStarted: false,
     gameEnded: false,
     winner: null,
-    lastAction: ""
+    lastAction: "",
+    settings: getDefaultGameSettings()
   });
   
   // Initialize the game with players
-  const startGame = (players: { id: string, name: string }[]) => {
-    // Create players with initial score
+  const startGame = (players: { id: string, name: string }[], settings: GameSettings) => {
+    // Create players with initial score from settings
     const initialPlayers: Player[] = players.map(player => ({
       ...player,
       cards: [],
-      score: INITIAL_SCORE,
+      score: settings.initialScore,
       saidMauMau: false,
       isEliminated: false,
     }));
     
-    // Create and shuffle the deck
-    let deck = createDeck();
+    // Create and shuffle the deck, including jokers if enabled
+    let deck = createDeck(settings.enableJokers);
     deck = shuffleDeck(deck);
     
     // Deal cards to players
@@ -62,7 +64,8 @@ const Index = () => {
       gameStarted: true,
       gameEnded: false,
       winner: null,
-      lastAction: `O jogo começou! ${updatedPlayers[0].name} começa.`
+      lastAction: `O jogo começou! ${updatedPlayers[0].name} começa.`,
+      settings
     });
   };
   
@@ -71,8 +74,8 @@ const Index = () => {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     const topCard = gameState.discardPile[gameState.discardPile.length - 1];
     
-    // Check if the move is valid
-    if (!isValidMove(cardToPlay, topCard)) {
+    // Check if the move is valid (considering bluffing option)
+    if (!isValidMove(cardToPlay, topCard, gameState.settings.enableBluffing)) {
       toast({
         title: "Jogada inválida",
         description: "Esta carta não pode ser jogada agora.",
@@ -81,7 +84,7 @@ const Index = () => {
       return;
     }
     
-    // Check if player forgot to say Mau Mau when having 2 cards
+    // Check if player forgot to say Mau Mau when having 1 card
     const mauMauCheck = checkMauMauStatus(currentPlayer, currentPlayer.saidMauMau);
     let updatedPlayers = [...gameState.players];
     let updatedDeck = [...gameState.deck];
@@ -172,7 +175,7 @@ const Index = () => {
     // Check if player can play the drawn card
     const topCard = gameState.discardPile[gameState.discardPile.length - 1];
     const drawnCard = drawnCards[0];
-    const canPlayDrawnCard = isValidMove(drawnCard, topCard);
+    const canPlayDrawnCard = isValidMove(drawnCard, topCard, gameState.settings.enableBluffing);
     
     // Only move to the next player if the player can't play the drawn card
     let nextPlayerIndex = gameState.currentPlayerIndex;
@@ -213,9 +216,18 @@ const Index = () => {
     const updatedPlayers = [...gameState.players];
     updatedPlayers[gameState.currentPlayerIndex].saidMauMau = true;
     
+    // Play a sound when Mau Mau is said
+    try {
+      const mauMauSound = new Audio("/mau-mau-sound.mp3");
+      mauMauSound.play().catch(e => console.log("Audio play prevented:", e));
+    } catch (e) {
+      console.log("Sound error:", e);
+    }
+    
     toast({
       title: "Mau Mau!",
-      description: `${updatedPlayers[gameState.currentPlayerIndex].name} disse Mau Mau!`
+      description: `${updatedPlayers[gameState.currentPlayerIndex].name} disse Mau Mau!`,
+      className: "bg-gold/80"
     });
     
     setGameState({
@@ -246,8 +258,8 @@ const Index = () => {
       return;
     }
     
-    // Create and shuffle the deck
-    let deck = createDeck();
+    // Create and shuffle the deck, considering jokers setting
+    let deck = createDeck(gameState.settings.enableJokers);
     deck = shuffleDeck(deck);
     
     // Deal cards to players
@@ -265,7 +277,8 @@ const Index = () => {
       gameStarted: true,
       gameEnded: false,
       winner: null,
-      lastAction: "Nova rodada iniciada!"
+      lastAction: "Nova rodada iniciada!",
+      settings: gameState.settings
     });
   };
   
@@ -280,9 +293,25 @@ const Index = () => {
       gameStarted: false,
       gameEnded: false,
       winner: null,
-      lastAction: ""
+      lastAction: "",
+      settings: getDefaultGameSettings()
     });
   };
+  
+  // Load sound effects when game starts
+  useEffect(() => {
+    // Preload sounds
+    const sounds = [
+      new Audio("/card-sound.mp3"),
+      new Audio("/mau-mau-sound.mp3")
+    ];
+    
+    // Just reference them to trigger loading
+    sounds.forEach(sound => {
+      sound.volume = 0.5;
+      sound.preload = "auto";
+    });
+  }, []);
   
   // If the game is over and there's a winner, show game over screen
   if (gameState.gameEnded && gameState.winner) {

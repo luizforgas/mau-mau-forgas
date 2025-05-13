@@ -1,10 +1,10 @@
-import { Card, Rank, Suit, Player, GameState, Direction } from "../types/game";
+import { Card, Rank, Suit, Player, GameState, Direction, GameSettings } from "../types/game";
 
 export const INITIAL_SCORE = 100;
 export const INITIAL_CARDS = 7;
 
 // Create a deck of cards (2 decks combined)
-export const createDeck = (): Card[] => {
+export const createDeck = (includeJokers: boolean = false): Card[] => {
   const suits: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
   const ranks: Rank[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
   let deck: Card[] = [];
@@ -21,6 +21,23 @@ export const createDeck = (): Card[] => {
           isRed
         });
       }
+    }
+    
+    // Add jokers if enabled
+    if (includeJokers) {
+      deck.push({
+        id: `joker-red-${d}`,
+        suit: "joker",
+        rank: "joker",
+        isRed: true
+      });
+      
+      deck.push({
+        id: `joker-black-${d}`,
+        suit: "joker",
+        rank: "joker",
+        isRed: false
+      });
     }
   }
   
@@ -58,7 +75,23 @@ export const dealCards = (
 };
 
 // Check if a card can be played on top of discard pile
-export const isValidMove = (cardToPlay: Card, topCard: Card): boolean => {
+export const isValidMove = (cardToPlay: Card, topCard: Card, enableBluffing: boolean = false): boolean => {
+  // Jokers can be played on anything
+  if (cardToPlay.rank === "joker") {
+    return true;
+  }
+  
+  // Any card can be played on a joker
+  if (topCard.rank === "joker") {
+    return true;
+  }
+  
+  // If bluffing is enabled, any card is considered valid (tactical choice)
+  if (enableBluffing) {
+    return true;
+  }
+  
+  // Standard rules
   return (
     cardToPlay.suit === topCard.suit || 
     cardToPlay.rank === topCard.rank
@@ -86,7 +119,9 @@ export const findWinner = (players: Player[]): string | null => {
 
 // Calculate card points
 export const getCardPoints = (card: Card): number => {
-  if (card.rank === "A") {
+  if (card.rank === "joker") {
+    return 20;
+  } else if (card.rank === "A") {
     return 15;
   } else if (["K", "Q", "J"].includes(card.rank)) {
     return 10;
@@ -128,6 +163,45 @@ export const handleSpecialCard = (
   let message = "";
   
   switch (playedCard.rank) {
+    case "joker": // Next player draws 5 cards and loses turn
+      const targetPlayerIndex = getNextPlayerIndex(
+        newState.currentPlayerIndex,
+        newState.direction,
+        newState.players.length
+      );
+      const targetPlayer = newState.players[targetPlayerIndex];
+      
+      // Draw 5 cards for the next player
+      const { drawnCards, updatedDeck, updatedDiscardPile, reshuffled } = 
+        drawCardsFromDeck(newState.deck, newState.discardPile, 5);
+      
+      if (drawnCards.length > 0) {
+        newState.players[targetPlayerIndex].cards.push(...drawnCards);
+        newState.deck = updatedDeck;
+        newState.discardPile = updatedDiscardPile;
+        
+        // Skip the next player's turn
+        newState.currentPlayerIndex = getNextPlayerIndex(
+          targetPlayerIndex,
+          newState.direction,
+          newState.players.length
+        );
+        
+        message = `${targetPlayer.name} comprou 5 cartas e perdeu a vez!`;
+        if (reshuffled) {
+          message += " O monte foi reembaralhado.";
+        }
+      } else {
+        // If no cards could be drawn, just skip turn
+        newState.currentPlayerIndex = getNextPlayerIndex(
+          targetPlayerIndex,
+          newState.direction,
+          newState.players.length
+        );
+        message = `${targetPlayer.name} perdeu a vez!`;
+      }
+      break;
+      
     case "A": // Skip next player
       const skippedPlayerIndex = getNextPlayerIndex(
         newState.currentPlayerIndex,
@@ -235,3 +309,10 @@ export const drawCardsFromDeck = (
   
   return { drawnCards, updatedDeck, updatedDiscardPile, reshuffled };
 };
+
+// Default game settings
+export const getDefaultGameSettings = (): GameSettings => ({
+  initialScore: INITIAL_SCORE,
+  enableJokers: false,
+  enableBluffing: false
+});
