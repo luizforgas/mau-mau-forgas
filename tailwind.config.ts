@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Game specific colors
+				"card-red": "#e53935",
+				"card-black": "#212121",
+				"table-green": "#004d00",
+				"table-border": "#2e7d32",
+				"gold": "#d4af37"
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,11 +91,31 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'card-flip': {
+					'0%': {
+						transform: 'rotateY(0deg)',
+					},
+					'100%': {
+						transform: 'rotateY(180deg)',
+					}
+				},
+				'card-slide': {
+					'0%': {
+						transform: 'translateY(-20px)',
+						opacity: '0',
+					},
+					'100%': {
+						transform: 'translateY(0)',
+						opacity: '1',
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'card-flip': 'card-flip 0.3s ease-out forwards',
+				'card-slide': 'card-slide 0.3s ease-out forwards',
 			}
 		}
 	},
