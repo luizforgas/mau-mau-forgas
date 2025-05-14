@@ -62,9 +62,10 @@ body {
   @apply bg-gradient-game text-white;
 }
 
-/* Add smooth transitions for all interactive elements */
+/* Add smooth transitions for all interactive elements - fixed to avoid circular dependency */
 button, a, input, select, .transition-all {
-  @apply transition-all duration-200;
+  transition-property: all;
+  transition-duration: 200ms;
 }
 
 /* Define the keyframe animation separately */
