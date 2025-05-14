@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InfoIcon, RefreshCw, PlusCircle, LogIn } from 'lucide-react';
 import { Room } from '@/services/websocketService';
+import { toast } from '@/hooks/use-toast';
 
 const Lobby: React.FC = () => {
   const { 
@@ -15,7 +16,8 @@ const Lobby: React.FC = () => {
     joinRoom, 
     getPublicRooms,
     isLoading,
-    playerInfo
+    playerInfo,
+    error
   } = useMultiplayer();
   
   const [joinCode, setJoinCode] = useState<string>('');
@@ -33,6 +35,17 @@ const Lobby: React.FC = () => {
       joinRoom(joinCode.trim().toUpperCase());
     }
   };
+  
+  // Display errors from the multiplayerContext
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive"
+      });
+    }
+  }, [error]);
   
   return (
     <div className="w-full max-w-3xl mx-auto">

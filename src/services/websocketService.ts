@@ -47,6 +47,17 @@ class WebSocketService {
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private eventListeners: Map<string, Function[]> = new Map();
   private serverUrl: string;
+  
+  // Mock storage for rooms
+  private activeRooms: Map<string, {
+    code: string;
+    name: string;
+    players: { id: string; nickname: string; isCreator: boolean }[];
+    createdAt: number;
+    maxPlayers: number;
+    isPrivate: boolean;
+    creatorId: string;
+  }> = new Map();
 
   constructor() {
     // In a real app, this would come from environment variables
@@ -165,16 +176,51 @@ class WebSocketService {
     this.emit('connection_status', { status: this.status });
   }
   
+  // Generate unique room code
+  private generateRoomCode(): string {
+    const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed similar-looking characters
+    let code = '';
+    
+    // Generate a 6-character code
+    for (let i = 0; i < 6; i++) {
+      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    
+    // If code already exists, generate a new one (avoid collisions)
+    if (this.activeRooms.has(code)) {
+      return this.generateRoomCode();
+    }
+    
+    return code;
+  }
+  
   // For demo: handle mock responses based on sent events
   private handleMockResponse(event: WebSocketEvent): void {
     switch (event.type) {
       case 'create_room':
         setTimeout(() => {
-          const roomCode = 'R' + Math.random().toString(36).substring(2, 7).toUpperCase();
+          const roomCode = this.generateRoomCode();
+          const newRoom = {
+            code: roomCode,
+            name: `${event.payload.nickname}'s Room`,
+            players: [{
+              id: event.payload.playerId,
+              nickname: event.payload.nickname,
+              isCreator: true
+            }],
+            createdAt: Date.now(),
+            maxPlayers: 4,
+            isPrivate: false,
+            creatorId: event.payload.playerId
+          };
+          
+          // Store the room
+          this.activeRooms.set(roomCode, newRoom);
+          
           this.emit('room_created', { 
             room: { 
               code: roomCode,
-              name: `${event.payload.nickname}'s Room`,
+              name: newRoom.name,
               playerCount: 1,
               maxPlayers: 4,
               creatorId: event.payload.playerId,
@@ -186,18 +232,45 @@ class WebSocketService {
         
       case 'join_room':
         setTimeout(() => {
-          // Mock room data
-          const mockRoomData = {
-            code: event.payload.roomCode,
-            players: [
-              { id: event.payload.playerId, nickname: event.payload.nickname, isCreator: true },
-              { id: 'ai-player-1', nickname: 'AI Player 1', isCreator: false },
-            ],
-            messages: [],
+          const roomCode = event.payload.roomCode;
+          const room = this.activeRooms.get(roomCode);
+          
+          if (!room) {
+            // Room not found
+            this.emit('error', { 
+              message: `Room with code ${roomCode} not found.` 
+            });
+            toast({
+              title: "Error",
+              description: `Room with code ${roomCode} not found.`,
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          // Check if player is already in the room
+          const existingPlayerIndex = room.players.findIndex(p => p.id === event.payload.playerId);
+          if (existingPlayerIndex === -1) {
+            // Add player to room if not already in it
+            room.players.push({
+              id: event.payload.playerId,
+              nickname: event.payload.nickname,
+              isCreator: false
+            });
+          }
+          
+          // Prepare room data for client
+          const roomData = {
+            code: room.code,
+            name: room.name,
+            players: room.players,
+            messages: [], // Messages would be stored and retrieved in a real implementation
+            creatorId: room.creatorId,
+            gameStarted: false // Game status would be tracked in a real implementation
           };
           
           // Emit room joined event
-          this.emit('room_joined', { room: mockRoomData });
+          this.emit('room_joined', { room: roomData });
           
           // Broadcast player joined message
           setTimeout(() => {
@@ -216,34 +289,23 @@ class WebSocketService {
         
       case 'room_list':
         setTimeout(() => {
-          // Mock room list
-          const mockRooms: Room[] = [
-            { 
-              code: 'ABC123', 
-              name: 'Fun Game', 
-              playerCount: 2, 
-              maxPlayers: 4,
-              creatorId: 'player-1',
-              isPrivate: false
-            },
-            { 
-              code: 'DEF456', 
-              name: 'Pro Players', 
-              playerCount: 3, 
-              maxPlayers: 4,
-              creatorId: 'player-2',
-              isPrivate: false
-            },
-            { 
-              code: 'GHI789', 
-              name: 'Beginners Welcome', 
-              playerCount: 1, 
-              maxPlayers: 4,
-              creatorId: 'player-3',
-              isPrivate: true
-            },
-          ];
-          this.emit('room_list', { rooms: mockRooms });
+          // Convert active rooms to array for room list
+          const rooms: Room[] = [];
+          
+          this.activeRooms.forEach(room => {
+            if (!room.isPrivate) { // Only show public rooms
+              rooms.push({
+                code: room.code,
+                name: room.name,
+                playerCount: room.players.length,
+                maxPlayers: room.maxPlayers,
+                creatorId: room.creatorId,
+                isPrivate: room.isPrivate
+              });
+            }
+          });
+          
+          this.emit('room_list', { rooms });
         }, 300);
         break;
         
@@ -279,25 +341,77 @@ class WebSocketService {
         
       case 'kick_player':
         setTimeout(() => {
-          if (event.payload.targetPlayerId === localStorage.getItem('mauMauPlayerId')) {
-            this.emit('player_kicked', { reason: 'You have been kicked from the room' });
-            toast({
-              title: "Kicked",
-              description: "You have been removed from the room",
-              variant: "destructive"
-            });
-          } else {
-            const nickname = "Player"; // in a real app, we'd have the player's nickname
-            this.emit('player_left', { playerId: event.payload.targetPlayerId, nickname });
-            this.emit('chat_message', {
-              message: {
-                id: `msg-${Date.now()}`,
-                playerId: 'system',
-                nickname: 'System',
-                message: `${nickname} has been kicked from the room`,
-                timestamp: Date.now(),
+          const roomCode = event.payload.roomCode;
+          const targetId = event.payload.targetPlayerId;
+          const room = this.activeRooms.get(roomCode);
+          
+          if (room) {
+            // Find the player to kick
+            const playerIndex = room.players.findIndex(p => p.id === targetId);
+            let kickedNickname = "Player";
+            
+            if (playerIndex >= 0) {
+              kickedNickname = room.players[playerIndex].nickname;
+              // Remove player from the room
+              room.players.splice(playerIndex, 1);
+            }
+            
+            if (targetId === localStorage.getItem('mauMauPlayerId')) {
+              this.emit('player_kicked', { reason: 'You have been kicked from the room' });
+              toast({
+                title: "Kicked",
+                description: "You have been removed from the room",
+                variant: "destructive"
+              });
+            } else {
+              this.emit('player_left', { playerId: targetId, nickname: kickedNickname });
+              this.emit('chat_message', {
+                message: {
+                  id: `msg-${Date.now()}`,
+                  playerId: 'system',
+                  nickname: 'System',
+                  message: `${kickedNickname} has been kicked from the room`,
+                  timestamp: Date.now(),
+                }
+              });
+            }
+          }
+        }, 300);
+        break;
+        
+      case 'leave_room':
+        setTimeout(() => {
+          const roomCode = event.payload.roomCode;
+          const playerId = event.payload.playerId;
+          const room = this.activeRooms.get(roomCode);
+          
+          if (room) {
+            // Find and remove the player
+            const playerIndex = room.players.findIndex(p => p.id === playerId);
+            
+            if (playerIndex >= 0) {
+              const playerNickname = room.players[playerIndex].nickname;
+              room.players.splice(playerIndex, 1);
+              
+              // If no players left, remove the room
+              if (room.players.length === 0) {
+                this.activeRooms.delete(roomCode);
+              } else if (playerId === room.creatorId && room.players.length > 0) {
+                // If creator left, assign a new creator
+                room.creatorId = room.players[0].id;
+                room.players[0].isCreator = true;
               }
-            });
+              
+              this.emit('chat_message', {
+                message: {
+                  id: `msg-${Date.now()}`,
+                  playerId: 'system',
+                  nickname: 'System',
+                  message: `${playerNickname} left the room`,
+                  timestamp: Date.now(),
+                }
+              });
+            }
           }
         }, 300);
         break;

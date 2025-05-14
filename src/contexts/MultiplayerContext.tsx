@@ -181,6 +181,18 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
       });
 
+    // Handle errors from server
+    const errorUnsubscribe = websocketService.on<{ message: string }>('error',
+      (data) => {
+        setError(data.message);
+        setIsLoading(false);
+        
+        // Auto-clear error after 5 seconds
+        setTimeout(() => {
+          setError(null);
+        }, 5000);
+      });
+
     return () => {
       // Clean up all event listeners
       roomCreatedUnsubscribe();
@@ -189,6 +201,7 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
       roomListUnsubscribe();
       playerKickedUnsubscribe();
       gameStartedUnsubscribe();
+      errorUnsubscribe();
     };
   }, [toast, playerInfo, currentRoom]);
 
@@ -220,6 +233,7 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     setIsLoading(true);
+    setError(null); // Clear any previous errors
     websocketService.sendEvent({
       type: 'create_room',
       payload: {
@@ -236,6 +250,7 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     setIsLoading(true);
+    setError(null); // Clear any previous errors
     websocketService.sendEvent({
       type: 'join_room',
       payload: {
@@ -356,6 +371,7 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const getPublicRooms = useCallback(() => {
     setIsLoading(true);
+    setError(null); // Clear any previous errors
     websocketService.sendEvent({
       type: 'room_list',
       payload: { rooms: [] } // Empty payload, server will respond with rooms
