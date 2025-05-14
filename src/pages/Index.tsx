@@ -138,7 +138,7 @@ const Index = () => {
     
     // If no winner yet, apply special card effects
     if (!winner) {
-      // Handle special card effects (this already advances to the next player)
+      // Handle special card effects (this now always advances to the next player)
       updatedState = handleSpecialCard(cardToPlay, updatedState);
       
       // Reset "said Mau Mau" status for all players

@@ -1,4 +1,3 @@
-
 import { Card, Rank, Suit, Player, GameState, Direction, GameSettings } from "../types/game";
 
 export const INITIAL_SCORE = 100;
@@ -163,13 +162,16 @@ export const handleSpecialCard = (
   let newState = { ...gameState };
   let message = "";
   
+  // Always calculate the next player first - this ensures turn always advances
+  let nextPlayerIndex = getNextPlayerIndex(
+    newState.currentPlayerIndex,
+    newState.direction,
+    newState.players.length
+  );
+  
   switch (playedCard.rank) {
     case "joker": // Next player draws 5 cards and loses turn
-      const targetPlayerIndex = getNextPlayerIndex(
-        newState.currentPlayerIndex,
-        newState.direction,
-        newState.players.length
-      );
+      const targetPlayerIndex = nextPlayerIndex; // Target is the player who would normally go next
       const targetPlayer = newState.players[targetPlayerIndex];
       
       // Draw 5 cards for the next player
@@ -181,8 +183,8 @@ export const handleSpecialCard = (
         newState.deck = updatedDeck;
         newState.discardPile = updatedDiscardPile;
         
-        // Skip the next player's turn
-        newState.currentPlayerIndex = getNextPlayerIndex(
+        // Skip the targeted player's turn by advancing to the player after them
+        nextPlayerIndex = getNextPlayerIndex(
           targetPlayerIndex,
           newState.direction,
           newState.players.length
@@ -194,25 +196,16 @@ export const handleSpecialCard = (
         }
       } else {
         // If no cards could be drawn, just skip turn
-        newState.currentPlayerIndex = getNextPlayerIndex(
-          targetPlayerIndex,
-          newState.direction,
-          newState.players.length
-        );
         message = `${targetPlayer.name} perdeu a vez!`;
       }
       break;
       
     case "A": // Skip next player
-      const skippedPlayerIndex = getNextPlayerIndex(
-        newState.currentPlayerIndex,
-        newState.direction,
-        newState.players.length
-      );
-      const skippedPlayerName = newState.players[skippedPlayerIndex].name;
+      const skippedPlayerName = newState.players[nextPlayerIndex].name;
       
-      newState.currentPlayerIndex = getNextPlayerIndex(
-        skippedPlayerIndex,
+      // Skip the next player by advancing to the player after them
+      nextPlayerIndex = getNextPlayerIndex(
+        nextPlayerIndex,
         newState.direction,
         newState.players.length
       );
@@ -221,6 +214,13 @@ export const handleSpecialCard = (
       
     case "Q": // Reverse direction
       newState.direction = newState.direction === "clockwise" ? "counterclockwise" : "clockwise";
+      
+      // Recalculate next player after direction change
+      nextPlayerIndex = getNextPlayerIndex(
+        newState.currentPlayerIndex,
+        newState.direction,
+        newState.players.length
+      );
       message = `Direção do jogo invertida!`;
       break;
       
@@ -245,18 +245,17 @@ export const handleSpecialCard = (
         newState.players[prevPlayerIndex].cards.push(drawnCard);
         message = `Baralho foi embaralhado novamente. ${prevPlayer.name} comprou uma carta!`;
       }
+      
+      // Normal turn advancement happens below
       break;
       
     default:
-      // Move to next player for regular cards
-      newState.currentPlayerIndex = getNextPlayerIndex(
-        newState.currentPlayerIndex,
-        newState.direction,
-        newState.players.length
-      );
+      // Regular cards - normal turn advancement happens below
       break;
   }
   
+  // Always set the next player index - this ensures the turn always advances
+  newState.currentPlayerIndex = nextPlayerIndex;
   newState.lastAction = message || newState.lastAction;
   return newState;
 };
