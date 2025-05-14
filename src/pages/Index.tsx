@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import PlayerSetup from "@/components/PlayerSetup";
 import GameBoard from "@/components/GameBoard";
 import GameOver from "@/components/GameOver";
@@ -19,6 +18,15 @@ import {
   getDefaultGameSettings
 } from "@/utils/gameUtils";
 
+// Import multiplayer components
+import { useMultiplayer } from "@/contexts/MultiplayerContext";
+import PlayerLogin from "@/components/PlayerLogin";
+import Lobby from "@/components/Lobby";
+import WaitingRoom from "@/components/WaitingRoom";
+import TurnTimer from "@/components/TurnTimer";
+import Chat from "@/components/Chat";
+
+// Define multiplayer game state
 const Index = () => {
   const { toast } = useToast();
   const [gameState, setGameState] = useState<GameState>({
@@ -33,6 +41,15 @@ const Index = () => {
     lastAction: "",
     settings: getDefaultGameSettings()
   });
+  
+  const { 
+    isAuthenticated, 
+    currentRoom
+  } = useMultiplayer();
+  
+  // Timer state
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const turnDuration = 30; // seconds
   
   // Initialize the game with players
   const startGame = (players: { id: string, name: string }[], settings: GameSettings) => {
@@ -64,9 +81,12 @@ const Index = () => {
       gameStarted: true,
       gameEnded: false,
       winner: null,
-      lastAction: `O jogo começou! ${updatedPlayers[0].name} começa.`,
+      lastAction: `The game has started! ${updatedPlayers[0].name} goes first.`,
       settings
     });
+    
+    // Start turn timer for first player
+    setIsTimerActive(true);
   };
   
   // Handle playing a card from the player's hand
@@ -77,8 +97,8 @@ const Index = () => {
     // Check if the move is valid (considering bluffing option)
     if (!isValidMove(cardToPlay, topCard, gameState.settings.enableBluffing)) {
       toast({
-        title: "Jogada inválida",
-        description: "Esta carta não pode ser jogada agora.",
+        title: "Invalid move",
+        description: "This card cannot be played now.",
         variant: "destructive",
       });
       return;
@@ -107,8 +127,8 @@ const Index = () => {
       lastAction = mauMauCheck.message;
       
       toast({
-        title: "Esqueceu de dizer Mau Mau!",
-        description: "+2 cartas de penalidade.",
+        title: "Forgot to say Mau Mau!",
+        description: "+2 penalty cards.",
         variant: "destructive"
       });
     }
@@ -133,12 +153,15 @@ const Index = () => {
       discardPile: updatedDiscardPile,
       winner,
       gameEnded: !!winner,
-      lastAction: lastAction || `${currentPlayer.name} jogou ${cardToPlay.rank} de ${cardToPlay.suit}.`
+      lastAction: lastAction || `${currentPlayer.name} played ${cardToPlay.rank} of ${cardToPlay.suit}.`
     };
+    
+    // Reset timer
+    setIsTimerActive(false);
     
     // If no winner yet, apply special card effects
     if (!winner) {
-      // Handle special card effects (this now always advances to the next player)
+      // Handle special card effects
       updatedState = handleSpecialCard(cardToPlay, updatedState);
       
       // Reset "said Mau Mau" status for all players
@@ -146,14 +169,19 @@ const Index = () => {
         ...player,
         saidMauMau: false
       }));
+      
+      // Activate timer for next player
+      setTimeout(() => {
+        setIsTimerActive(true);
+      }, 500);
     } else {
       // Calculate final scores if game ended
       updatedState.players = calculateScores(updatedState.players, winner);
-      updatedState.lastAction = `${currentPlayer.name} venceu a rodada!`;
+      updatedState.lastAction = `${currentPlayer.name} won the round!`;
       
       toast({
-        title: "Fim da Rodada!",
-        description: `${currentPlayer.name} venceu!`,
+        title: "Round Over!",
+        description: `${currentPlayer.name} won!`,
       });
     }
     
@@ -167,8 +195,8 @@ const Index = () => {
     
     if (drawnCards.length === 0) {
       toast({
-        title: "Não há mais cartas",
-        description: "Todas as cartas já foram distribuídas.",
+        title: "No more cards",
+        description: "All cards have been dealt.",
         variant: "destructive"
       });
       return;
@@ -185,11 +213,14 @@ const Index = () => {
     
     // Only move to the next player if the player can't play the drawn card
     let nextPlayerIndex = gameState.currentPlayerIndex;
-    let lastAction = `${gameState.players[gameState.currentPlayerIndex].name} comprou uma carta.`;
+    let lastAction = `${gameState.players[gameState.currentPlayerIndex].name} drew a card.`;
     
     if (reshuffled) {
-      lastAction += " O monte foi reembaralhado.";
+      lastAction += " The deck was reshuffled.";
     }
+    
+    // Reset timer
+    setIsTimerActive(false);
     
     if (!canPlayDrawnCard) {
       nextPlayerIndex = getNextPlayerIndex(
@@ -200,11 +231,21 @@ const Index = () => {
       
       // Reset "said Mau Mau" status for all players
       updatedPlayers.forEach(player => player.saidMauMau = false);
+      
+      // Activate timer for next player after a short delay
+      setTimeout(() => {
+        setIsTimerActive(true);
+      }, 500);
     } else {
       toast({
-        title: "Você pode jogar esta carta",
-        description: "A carta comprada pode ser jogada nesta rodada."
+        title: "You can play this card",
+        description: "The drawn card can be played this round."
       });
+      
+      // Keep timer active for current player if they can play
+      setTimeout(() => {
+        setIsTimerActive(true);
+      }, 500);
     }
     
     setGameState({
@@ -232,15 +273,27 @@ const Index = () => {
     
     toast({
       title: "Mau Mau!",
-      description: `${updatedPlayers[gameState.currentPlayerIndex].name} disse Mau Mau!`,
+      description: `${updatedPlayers[gameState.currentPlayerIndex].name} said Mau Mau!`,
       className: "bg-indigo-600/80"
     });
     
     setGameState({
       ...gameState,
       players: updatedPlayers,
-      lastAction: `${updatedPlayers[gameState.currentPlayerIndex].name} disse Mau Mau!`
+      lastAction: `${updatedPlayers[gameState.currentPlayerIndex].name} said Mau Mau!`
     });
+  };
+  
+  // Handle turn timeout
+  const handleTurnTimeout = () => {
+    toast({
+      title: "Time's up!",
+      description: `${gameState.players[gameState.currentPlayerIndex].name}'s turn has ended.`,
+      variant: "destructive"
+    });
+    
+    // Automatically draw a card when the timer expires
+    handleDrawCard();
   };
   
   // Restart with same players
@@ -258,8 +311,8 @@ const Index = () => {
     
     if (activePlayers.length < 2) {
       toast({
-        title: "Fim do jogo!",
-        description: "Não há jogadores suficientes para continuar.",
+        title: "Game over!",
+        description: "Not enough players to continue.",
       });
       return;
     }
@@ -283,9 +336,12 @@ const Index = () => {
       gameStarted: true,
       gameEnded: false,
       winner: null,
-      lastAction: "Nova rodada iniciada!",
+      lastAction: "New round started!",
       settings: gameState.settings
     });
+    
+    // Start turn timer for first player
+    setIsTimerActive(true);
   };
   
   // Start a completely new game
@@ -332,40 +388,74 @@ const Index = () => {
     }
   }, [gameState.currentPlayerIndex, gameState.gameStarted, gameState.settings]);
   
-  // If the game is over and there's a winner, show game over screen
-  if (gameState.gameEnded && gameState.winner) {
-    const winnerPlayer = gameState.players.find(player => player.id === gameState.winner)!;
-    return (
-      <div className="min-h-screen bg-gradient-game py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <GameOver 
-            winner={winnerPlayer} 
-            players={gameState.players}
-            onRestartGame={handleRestartGame}
-            onNewGame={handleNewGame}
+  // Render the appropriate component based on authentication and game state
+  const renderContent = () => {
+    // If player isn't authenticated, show login
+    if (!isAuthenticated) {
+      return <PlayerLogin />;
+    }
+    
+    // If game is over, show game over screen
+    if (gameState.gameEnded && gameState.winner) {
+      const winnerPlayer = gameState.players.find(player => player.id === gameState.winner)!;
+      return (
+        <GameOver 
+          winner={winnerPlayer} 
+          players={gameState.players}
+          onRestartGame={handleRestartGame}
+          onNewGame={handleNewGame}
+        />
+      );
+    }
+    
+    // If player is authenticated but not in a room, show the lobby
+    if (!currentRoom) {
+      return <Lobby />;
+    }
+    
+    // If player is in a room but the game hasn't started, show the waiting room
+    if (currentRoom && !currentRoom.gameStarted && !gameState.gameStarted) {
+      return <WaitingRoom />;
+    }
+    
+    // If game has started, show game board
+    if (gameState.gameStarted || (currentRoom && currentRoom.gameStarted)) {
+      return (
+        <div className="bg-black/30 p-4 rounded-lg border border-white/10 backdrop-blur-sm shadow-lg">
+          <div className="mb-4">
+            <TurnTimer 
+              isActive={isTimerActive} 
+              duration={turnDuration} 
+              onTimeout={handleTurnTimeout} 
+            />
+          </div>
+          
+          <GameBoard
+            gameState={gameState}
+            onPlayCard={handlePlayCard}
+            onDrawCard={handleDrawCard}
+            onSayMauMau={handleSayMauMau}
           />
+          
+          <div className="mt-6 border-t border-white/10 pt-4">
+            <h3 className="text-lg font-medium text-white mb-3">Game Chat</h3>
+            <div className="h-64 bg-black/40 rounded-lg p-3">
+              <Chat />
+            </div>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
+    
+    // If no other conditions match, show the player setup
+    return <PlayerSetup onStartGame={startGame} />;
+  };
   
   return (
     <div className="min-h-screen bg-gradient-game py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-center text-white mb-8">Mau Mau</h1>
-        
-        {!gameState.gameStarted ? (
-          <PlayerSetup onStartGame={startGame} />
-        ) : (
-          <div className="bg-black/30 p-4 rounded-lg border border-white/10 backdrop-blur-sm shadow-lg">
-            <GameBoard
-              gameState={gameState}
-              onPlayCard={handlePlayCard}
-              onDrawCard={handleDrawCard}
-              onSayMauMau={handleSayMauMau}
-            />
-          </div>
-        )}
+        {renderContent()}
       </div>
     </div>
   );
