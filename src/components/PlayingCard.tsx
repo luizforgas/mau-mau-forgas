@@ -18,7 +18,7 @@ const PlayingCard: React.FC<PlayingCardProps> = ({
   isFaceDown = false,
   className,
 }) => {
-  if (!card) {
+  if (!card && !isFaceDown) {
     // Empty card slot
     return (
       <div
@@ -52,14 +52,14 @@ const PlayingCard: React.FC<PlayingCardProps> = ({
   return (
     <div
       className={cn(
-        "relative w-16 h-24 bg-white rounded-lg shadow-md transform transition-transform duration-200",
+        "relative w-16 h-24 rounded-lg shadow-lg transform transition-all duration-200",
         isPlayable && !isFaceDown ? "hover:-translate-y-2 cursor-pointer" : "",
-        isFaceDown ? "bg-blue-700" : "",
+        isFaceDown ? "bg-indigo-700" : "bg-white",
         className
       )}
       onClick={isPlayable && !isFaceDown ? onClick : undefined}
     >
-      {!isFaceDown && (
+      {!isFaceDown && card && (
         <>
           {card.rank === "joker" ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -107,9 +107,9 @@ const PlayingCard: React.FC<PlayingCardProps> = ({
         </>
       )}
       {isFaceDown && (
-        <div className="absolute inset-0 rounded-lg bg-blue-700 border-2 border-white flex items-center justify-center">
-          <div className="w-8 h-12 rounded-full bg-blue-900 flex items-center justify-center">
-            <span className="text-white font-bold">MᴀᴜMᴀᴜ</span>
+        <div className="absolute inset-0 rounded-lg bg-indigo-700 border border-indigo-300/30 flex items-center justify-center shadow-inner">
+          <div className="w-8 h-12 rounded-full bg-indigo-900 flex items-center justify-center border border-indigo-500/30">
+            <span className="text-white font-bold text-xs">MᴀᴜMᴀᴜ</span>
           </div>
         </div>
       )}

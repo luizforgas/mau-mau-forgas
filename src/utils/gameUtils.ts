@@ -1,3 +1,4 @@
+
 import { Card, Rank, Suit, Player, GameState, Direction, GameSettings } from "../types/game";
 
 export const INITIAL_SCORE = 100;
@@ -263,8 +264,16 @@ export const handleSpecialCard = (
 // Check if a player forgot to say Mau Mau
 export const checkMauMauStatus = (
   player: Player,
-  hasSaidMauMau: boolean
+  hasSaidMauMau: boolean,
+  enableMauMauRule: boolean = true
 ): { shouldPenalize: boolean, message: string } => {
+  if (!enableMauMauRule) {
+    return {
+      shouldPenalize: false,
+      message: ""
+    };
+  }
+  
   if (player.cards.length === 1 && !hasSaidMauMau) {
     return {
       shouldPenalize: true,
@@ -314,5 +323,7 @@ export const drawCardsFromDeck = (
 export const getDefaultGameSettings = (): GameSettings => ({
   initialScore: INITIAL_SCORE,
   enableJokers: false,
-  enableBluffing: false
+  enableBluffing: false,
+  enableMauMauRule: true,
+  autoCheckMauMau: true
 });

@@ -85,20 +85,25 @@ const Index = () => {
     }
     
     // Check if player forgot to say Mau Mau when having 1 card
-    const mauMauCheck = checkMauMauStatus(currentPlayer, currentPlayer.saidMauMau);
+    const mauMauCheck = checkMauMauStatus(
+      currentPlayer, 
+      currentPlayer.saidMauMau, 
+      gameState.settings.enableMauMauRule
+    );
+    
     let updatedPlayers = [...gameState.players];
     let updatedDeck = [...gameState.deck];
     let updatedDiscardPile = [...gameState.discardPile];
     let lastAction = "";
     
-    if (mauMauCheck.shouldPenalize) {
+    // Apply Mau Mau penalty if necessary and rule is enabled
+    if (mauMauCheck.shouldPenalize && !gameState.settings.autoCheckMauMau) {
       // Player forgot to say Mau Mau, draw 2 penalty cards
-      const { drawnCards, updatedDeck: newDeck, updatedDiscardPile: newDiscardPile } = 
+      const { drawnCards, updatedDeck: newDeck } = 
         drawCardsFromDeck(updatedDeck, updatedDiscardPile, 2);
       
       updatedPlayers[gameState.currentPlayerIndex].cards.push(...drawnCards);
       updatedDeck = newDeck;
-      updatedDiscardPile = newDiscardPile;
       lastAction = mauMauCheck.message;
       
       toast({
@@ -120,7 +125,7 @@ const Index = () => {
       ? updatedPlayers[gameState.currentPlayerIndex].id
       : null;
     
-    // Apply special card effects
+    // Initialize the updated state
     let updatedState: GameState = {
       ...gameState,
       players: updatedPlayers,
@@ -131,8 +136,9 @@ const Index = () => {
       lastAction: lastAction || `${currentPlayer.name} jogou ${cardToPlay.rank} de ${cardToPlay.suit}.`
     };
     
+    // If no winner yet, apply special card effects
     if (!winner) {
-      // If no winner yet, apply special card effects and continue
+      // Handle special card effects (this already advances to the next player)
       updatedState = handleSpecialCard(cardToPlay, updatedState);
       
       // Reset "said Mau Mau" status for all players
@@ -227,7 +233,7 @@ const Index = () => {
     toast({
       title: "Mau Mau!",
       description: `${updatedPlayers[gameState.currentPlayerIndex].name} disse Mau Mau!`,
-      className: "bg-gold/80"
+      className: "bg-indigo-600/80"
     });
     
     setGameState({
@@ -313,11 +319,24 @@ const Index = () => {
     });
   }, []);
   
+  // Auto-check for Mau Mau status at the end of each turn
+  useEffect(() => {
+    if (!gameState.gameStarted || gameState.gameEnded || !gameState.settings.enableMauMauRule || !gameState.settings.autoCheckMauMau) {
+      return;
+    }
+    
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (currentPlayer.cards.length === 1 && !currentPlayer.saidMauMau) {
+      // Automatically apply Mau Mau when auto-check is enabled
+      handleSayMauMau();
+    }
+  }, [gameState.currentPlayerIndex, gameState.gameStarted, gameState.settings]);
+  
   // If the game is over and there's a winner, show game over screen
   if (gameState.gameEnded && gameState.winner) {
     const winnerPlayer = gameState.players.find(player => player.id === gameState.winner)!;
     return (
-      <div className="min-h-screen bg-table-green py-8 px-4">
+      <div className="min-h-screen bg-gradient-game py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <GameOver 
             winner={winnerPlayer} 
@@ -331,14 +350,14 @@ const Index = () => {
   }
   
   return (
-    <div className="min-h-screen bg-table-green py-8 px-4">
+    <div className="min-h-screen bg-gradient-game py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-center text-white mb-8">Mau Mau</h1>
         
         {!gameState.gameStarted ? (
           <PlayerSetup onStartGame={startGame} />
         ) : (
-          <div className="bg-black/20 p-4 rounded-lg border-2 border-table-border">
+          <div className="bg-black/30 p-4 rounded-lg border border-white/10 backdrop-blur-sm shadow-lg">
             <GameBoard
               gameState={gameState}
               onPlayCard={handlePlayCard}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, Direction, GameState, Player } from "../types/game";
 import PlayingCard from "./PlayingCard";
@@ -59,7 +58,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     <div className="h-full flex flex-col">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         {/* Players list */}
-        <div className="bg-black/20 p-3 rounded-lg">
+        <div className="bg-black/30 p-3 rounded-lg backdrop-blur-sm border border-white/10">
           <h3 className="text-white text-center mb-2 font-bold">Jogadores</h3>
           <div className="space-y-1">
             {gameState.players.map((player, index) => (
@@ -67,7 +66,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 key={player.id} 
                 className={`flex justify-between p-1 rounded transition-all duration-300 ${
                   index === gameState.currentPlayerIndex 
-                    ? "bg-gold/20 border border-gold" + (highlight ? " animate-pulse" : "")
+                    ? "bg-indigo-600/60 border border-indigo-400" + (highlight ? " animate-pulse" : "")
                     : ""
                 }`}
               >
@@ -94,7 +93,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           </div>
           
           {gameState.lastAction && (
-            <div className="bg-black/30 p-2 rounded-lg animate-fade-in">
+            <div className="bg-black/40 p-2 rounded-lg backdrop-blur-sm border border-white/10 animate-fade-in">
               <p className="text-white text-center">{gameState.lastAction}</p>
             </div>
           )}
@@ -108,14 +107,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
           <div className="flex flex-col items-center">
             <div className="relative hover-scale">
               <PlayingCard isFaceDown={true} />
-              <span className="absolute -top-3 -right-3 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+              <span className="absolute -top-3 -right-3 bg-indigo-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
                 {gameState.deck.length}
               </span>
             </div>
             <Button
               variant="secondary"
               size="sm"
-              className="mt-2 bg-black/30 text-white hover:bg-black/40 hover-scale"
+              className="mt-2 bg-black/40 text-white hover:bg-black/60 hover-scale border border-white/20"
               onClick={handleDrawCard}
               disabled={gameState.gameEnded}
             >
@@ -139,12 +138,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
       
       {/* Current player's hand */}
       <div className="mt-auto">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-2">
           <h3 className="text-white font-bold text-lg">{currentPlayer.name}</h3>
-          {currentPlayer.cards.length === 1 && (
+          {currentPlayer.cards.length === 1 && gameState.settings.enableMauMauRule && !gameState.settings.autoCheckMauMau && (
             <Button
               variant="default"
-              className="bg-gold hover:bg-gold/80 text-black animate-pulse hover-scale"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white animate-pulse hover-scale"
               size="sm"
               onClick={onSayMauMau}
               disabled={currentPlayer.saidMauMau || gameState.gameEnded}
@@ -167,7 +166,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {gameState.players
           .filter((_, i) => i !== gameState.currentPlayerIndex && !gameState.players[i].isEliminated)
           .map((player) => (
-            <div key={player.id} className="bg-black/20 p-2 rounded animate-fade-in">
+            <div key={player.id} className="bg-black/40 p-2 rounded backdrop-blur-sm border border-white/10 animate-fade-in">
               <h4 className="text-white text-sm mb-1">{player.name}</h4>
               <PlayerHand cards={player.cards} isCurrentPlayer={false} />
             </div>

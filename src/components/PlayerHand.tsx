@@ -19,20 +19,6 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
   // State to track which card is being hovered
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
-  // For non-current players, show cards face down and fewer details
-  if (!isCurrentPlayer) {
-    return (
-      <div className="flex flex-wrap justify-center items-center gap-1 max-w-md mx-auto">
-        {cards.map((_, index) => (
-          <div key={index} className="relative h-6 w-4 hover-scale">
-            <div className="absolute -left-1 top-0 bg-blue-700 h-6 w-4 border border-white rounded-sm" />
-          </div>
-        ))}
-        <span className="text-white text-xs ml-2">{cards.length} cartas</span>
-      </div>
-    );
-  }
-  
   // Calculate card positions with proper spacing for any number of cards
   const getCardPosition = (index: number, total: number): number => {
     const maxWidth = Math.min(window.innerWidth - 40, 600); // Responsive max width
@@ -57,6 +43,35 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
   const isPlayableCard = (card: CardType): boolean => {
     return playableCards.some(playable => playable.id === card.id);
   };
+  
+  // For non-current players, show a more visually appealing display of face down cards
+  if (!isCurrentPlayer) {
+    return (
+      <div className="relative h-16 flex items-end justify-center">
+        {cards.map((card, index) => {
+          const left = getCardPosition(index, cards.length);
+          return (
+            <div
+              key={card.id}
+              className="absolute transition-all duration-300"
+              style={{ 
+                left: `${left}px`,
+                zIndex: index,
+              }}
+            >
+              <PlayingCard 
+                isFaceDown={true} 
+                className="w-10 h-16 transform scale-75"
+              />
+            </div>
+          );
+        })}
+        <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-white text-xs">
+          {cards.length} cartas
+        </span>
+      </div>
+    );
+  }
   
   return (
     <div className="relative h-32 flex items-end justify-center mt-4">
@@ -85,7 +100,7 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
               isPlayable={canPlay}
               onClick={() => onCardClick && onCardClick(card)}
               className={cn(
-                isPlayableCard(card) ? "ring-2 ring-gold" : "",
+                isPlayableCard(card) ? "ring-2 ring-indigo-400" : "",
                 "transition-transform duration-300 cursor-pointer"
               )}
             />

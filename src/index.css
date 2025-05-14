@@ -1,4 +1,6 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,7 +8,7 @@
 @layer components {
   /* Game table background */
   .bg-table-green {
-    @apply bg-gradient-to-br from-green-800 to-green-900;
+    @apply bg-gradient-to-br from-slate-900 to-indigo-900;
   }
   
   /* Card colors */
@@ -20,7 +22,7 @@
   
   /* Border for the game area */
   .border-table-border {
-    @apply border-amber-500/50;
+    @apply border-indigo-500/30;
   }
   
   /* Gold color for buttons and highlights */
@@ -37,4 +39,29 @@
   .hover-scale-rotate {
     @apply transition-all duration-300 hover:scale-105 hover:rotate-1;
   }
+  
+  /* Modern neumorphic card style */
+  .neumorphic {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
+  }
+  
+  /* Card animation classes */
+  .animate-fade-in {
+    @apply animate-fade-in;
+  }
+  
+  /* Glass card effect */
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20;
+  }
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  @apply bg-gradient-game text-white;
+}
+
+/* Add smooth transitions for all interactive elements */
+button, a, input, select, .transition-all {
+  @apply transition-all duration-200;
 }

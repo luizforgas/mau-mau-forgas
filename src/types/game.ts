@@ -22,6 +22,8 @@ export interface GameSettings {
   initialScore: number;
   enableJokers: boolean;
   enableBluffing: boolean;
+  enableMauMauRule: boolean; // New setting to toggle Mau Mau rule
+  autoCheckMauMau: boolean;  // New setting for auto-checking Mau Mau
 }
 
 export type Direction = "clockwise" | "counterclockwise";

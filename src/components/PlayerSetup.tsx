@@ -19,6 +19,8 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
   const [initialScore, setInitialScore] = useState(INITIAL_SCORE);
   const [enableJokers, setEnableJokers] = useState(false);
   const [enableBluffing, setEnableBluffing] = useState(false);
+  const [enableMauMauRule, setEnableMauMauRule] = useState(true);
+  const [autoCheckMauMau, setAutoCheckMauMau] = useState(true);
   
   const handlePlayerCountChange = (increment: boolean) => {
     const newCount = increment ? Math.min(playerCount + 1, 10) : Math.max(playerCount - 1, 2);
@@ -47,14 +49,16 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
     const settings: GameSettings = {
       initialScore,
       enableJokers,
-      enableBluffing
+      enableBluffing,
+      enableMauMauRule,
+      autoCheckMauMau
     };
     
     onStartGame(players, settings);
   };
   
   return (
-    <Card className="w-full max-w-md mx-auto bg-black/20 p-6 rounded-lg border-2 border-table-border animate-fade-in">
+    <Card className="w-full max-w-md mx-auto bg-black/50 p-6 rounded-lg border border-white/10 shadow-lg animate-fade-in">
       <h2 className="text-xl font-bold text-white text-center mb-6">Mau Mau - Configuração</h2>
       
       <div className="space-y-6">
@@ -67,7 +71,7 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
             <Button
               size="sm"
               variant="outline"
-              className="text-white border-white"
+              className="text-white border-white/30"
               onClick={() => handlePlayerCountChange(false)}
               disabled={playerCount <= 2}
             >
@@ -81,7 +85,7 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
             <Button
               size="sm"
               variant="outline"
-              className="text-white border-white"
+              className="text-white border-white/30"
               onClick={() => handlePlayerCountChange(true)}
               disabled={playerCount >= 10}
             >
@@ -147,10 +151,36 @@ const PlayerSetup: React.FC<PlayerSetupProps> = ({ onStartGame }) => {
               onCheckedChange={setEnableBluffing}
             />
           </div>
+          
+          <div className="flex items-center justify-between">
+            <Label htmlFor="maumau" className="text-white">
+              Regra do "Mau Mau"
+              <p className="text-xs text-white/70">Jogador deve dizer "Mau Mau" ao ter 1 carta</p>
+            </Label>
+            <Switch 
+              id="maumau"
+              checked={enableMauMauRule}
+              onCheckedChange={setEnableMauMauRule}
+            />
+          </div>
+          
+          {enableMauMauRule && (
+            <div className="flex items-center justify-between pl-4 border-l-2 border-white/10">
+              <Label htmlFor="automaumau" className="text-white">
+                Verificação Automática
+                <p className="text-xs text-white/70">Sistema verifica automaticamente</p>
+              </Label>
+              <Switch 
+                id="automaumau"
+                checked={autoCheckMauMau}
+                onCheckedChange={setAutoCheckMauMau}
+              />
+            </div>
+          )}
         </div>
         
         <Button 
-          className="w-full bg-gold hover:bg-gold/80 text-black hover-scale" 
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover-scale" 
           onClick={handleSubmit}
         >
           Iniciar Jogo

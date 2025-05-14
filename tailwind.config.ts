@@ -66,9 +66,13 @@ export default {
 				// Game specific colors
 				"card-red": "#e53935",
 				"card-black": "#212121",
-				"table-green": "#004d00",
-				"table-border": "#2e7d32",
+				"table-green": "#1e1f2e", // Updated to modern dark blue/slate
+				"table-border": "#3a4161", // Updated to complement the table color
 				"gold": "#d4af37"
+			},
+			fontFamily: {
+				sans: ['Inter', 'system-ui', 'sans-serif'],
+				mono: ['Roboto Mono', 'monospace'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -109,14 +113,35 @@ export default {
 						transform: 'translateY(0)',
 						opacity: '1',
 					}
-				}
+				},
+                'fade-in': {
+                    '0%': {
+                        opacity: '0',
+                    },
+                    '100%': {
+                        opacity: '1',
+                    }
+                },
+                'pulse': {
+                    '0%, 100%': {
+                        opacity: '1',
+                    },
+                    '50%': {
+                        opacity: '0.6',
+                    }
+                }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'card-flip': 'card-flip 0.3s ease-out forwards',
 				'card-slide': 'card-slide 0.3s ease-out forwards',
-			}
+                'fade-in': 'fade-in 0.3s ease-out',
+                'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+			},
+            backgroundImage: {
+                'gradient-game': 'linear-gradient(135deg, #1e1f2e 0%, #2c2d43 100%)',
+            },
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
