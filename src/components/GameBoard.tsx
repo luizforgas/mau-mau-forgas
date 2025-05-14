@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, Direction, GameState, Player } from "../types/game";
 import PlayingCard from "./PlayingCard";
@@ -93,7 +94,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           </div>
           
           {gameState.lastAction && (
-            <div className="bg-black/40 p-2 rounded-lg backdrop-blur-sm border border-white/10 animate-fade-in">
+            <div className="bg-black/40 p-2 rounded-lg backdrop-blur-sm border border-white/10 custom-fade-in">
               <p className="text-white text-center">{gameState.lastAction}</p>
             </div>
           )}
@@ -166,7 +167,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {gameState.players
           .filter((_, i) => i !== gameState.currentPlayerIndex && !gameState.players[i].isEliminated)
           .map((player) => (
-            <div key={player.id} className="bg-black/40 p-2 rounded backdrop-blur-sm border border-white/10 animate-fade-in">
+            <div key={player.id} className="bg-black/40 p-2 rounded backdrop-blur-sm border border-white/10 custom-fade-in">
               <h4 className="text-white text-sm mb-1">{player.name}</h4>
               <PlayerHand cards={player.cards} isCurrentPlayer={false} />
             </div>

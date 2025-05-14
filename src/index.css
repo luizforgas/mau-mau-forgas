@@ -45,9 +45,10 @@
     @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
   }
   
-  /* Card animation classes */
-  .animate-fade-in {
-    @apply animate-fade-in;
+  /* Card animation classes - fixed to avoid circular dependency */
+  .custom-fade-in {
+    @apply opacity-0;
+    animation: fade-in 0.3s ease-out forwards;
   }
   
   /* Glass card effect */
@@ -64,4 +65,10 @@ body {
 /* Add smooth transitions for all interactive elements */
 button, a, input, select, .transition-all {
   @apply transition-all duration-200;
+}
+
+/* Define the keyframe animation separately */
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
 }

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card as CardType } from "../types/game";
 import PlayingCard from "./PlayingCard";
@@ -84,7 +85,7 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
           <div
             key={card.id}
             className={cn(
-              "absolute transition-all duration-300 animate-fade-in",
+              "absolute transition-all duration-300 custom-fade-in",
               isHovered && "z-50" // Bring hovered card to front
             )}
             style={{ 
