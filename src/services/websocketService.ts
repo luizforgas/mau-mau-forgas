@@ -57,6 +57,13 @@ class WebSocketService {
     this.mockWebSocket();
   }
   
+  // Mock WebSocket setup
+  private mockWebSocket(): void {
+    console.log('Setting up mock WebSocket');
+    // This method doesn't need to do anything special
+    // It's just a placeholder for real WebSocket initialization
+  }
+  
   // Connect to WebSocket server
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
