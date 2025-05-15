@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMultiplayer } from '@/contexts/MultiplayerContext';
+import translations from '@/localization/pt-BR';
 
 const PlayerLogin: React.FC = () => {
   const [nickname, setNickname] = useState<string>('');
@@ -22,19 +23,19 @@ const PlayerLogin: React.FC = () => {
   return (
     <div className="flex items-center justify-center w-full">
       <Card className="w-full max-w-md p-6 bg-black/30 border border-white/10 backdrop-blur-sm shadow-lg">
-        <h2 className="text-2xl font-bold mb-6 text-center text-white">Welcome to Mau Mau</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center text-white">{translations.auth.welcome}</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="nickname" className="text-sm font-medium block text-white">
-              Choose a Nickname
+              {translations.auth.nickname}
             </label>
             <Input 
               type="text"
               id="nickname"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="Enter your nickname"
+              placeholder={translations.auth.nickname}
               className="w-full bg-black/20 text-white placeholder:text-gray-400"
               autoComplete="off"
               minLength={3}
@@ -42,7 +43,7 @@ const PlayerLogin: React.FC = () => {
               required
             />
             <p className="text-xs text-gray-400">
-              Nickname must be between 3-20 characters
+              {translations.auth.nicknameRequirements}
             </p>
           </div>
           
@@ -51,7 +52,7 @@ const PlayerLogin: React.FC = () => {
             className="w-full bg-indigo-600 hover:bg-indigo-700"
             disabled={nickname.trim().length < 3}
           >
-            Continue
+            {translations.auth.continue}
           </Button>
         </form>
       </Card>

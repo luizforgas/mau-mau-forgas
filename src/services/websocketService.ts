@@ -1,13 +1,17 @@
 
 import { toast } from "@/hooks/use-toast";
+import translations from "@/localization/pt-BR";
 
 // WebSocket connection states
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
+// Room visibility type
+export type RoomVisibility = 'public' | 'private';
+
 // Events that can be sent/received via WebSocket
 export type WebSocketEvent = 
   | { type: 'join_room', payload: { roomCode: string, nickname: string, playerId: string } }
-  | { type: 'create_room', payload: { nickname: string, playerId: string } }
+  | { type: 'create_room', payload: { nickname: string, playerId: string, isPrivate: boolean } }
   | { type: 'leave_room', payload: { roomCode: string, playerId: string } }
   | { type: 'start_game', payload: { roomCode: string } }
   | { type: 'kick_player', payload: { roomCode: string, targetPlayerId: string } }
@@ -39,6 +43,20 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+// Active room data
+interface ActiveRoom {
+  code: string;
+  name: string;
+  players: { id: string; nickname: string; isCreator: boolean }[];
+  createdAt: number;
+  maxPlayers: number;
+  isPrivate: boolean;
+  creatorId: string;
+}
+
+// Create singleton instance to ensure rooms are shared across the application
+let activeRoomsMap: Map<string, ActiveRoom> = new Map();
+
 class WebSocketService {
   private socket: WebSocket | null = null;
   private status: ConnectionStatus = 'disconnected';
@@ -48,28 +66,17 @@ class WebSocketService {
   private eventListeners: Map<string, Function[]> = new Map();
   private serverUrl: string;
   
-  // Mock storage for rooms
-  private activeRooms: Map<string, {
-    code: string;
-    name: string;
-    players: { id: string; nickname: string; isCreator: boolean }[];
-    createdAt: number;
-    maxPlayers: number;
-    isPrivate: boolean;
-    creatorId: string;
-  }> = new Map();
-
   constructor() {
     // In a real app, this would come from environment variables
     this.serverUrl = 'wss://mau-mau-server.example.com';
     
     // For this demo, we'll use a mock WebSocket
     // In a real app, replace with actual WebSocket connection
-    this.mockWebSocket();
+    this.setupMockWebSocket();
   }
   
   // Mock WebSocket setup
-  private mockWebSocket(): void {
+  private setupMockWebSocket(): void {
     console.log('Setting up mock WebSocket');
     // This method doesn't need to do anything special
     // It's just a placeholder for real WebSocket initialization
@@ -187,7 +194,7 @@ class WebSocketService {
     }
     
     // If code already exists, generate a new one (avoid collisions)
-    if (this.activeRooms.has(code)) {
+    if (activeRoomsMap.has(code)) {
       return this.generateRoomCode();
     }
     
@@ -200,7 +207,9 @@ class WebSocketService {
       case 'create_room':
         setTimeout(() => {
           const roomCode = this.generateRoomCode();
-          const newRoom = {
+          const isPrivate = 'isPrivate' in event.payload ? event.payload.isPrivate : false;
+          
+          const newRoom: ActiveRoom = {
             code: roomCode,
             name: `${event.payload.nickname}'s Room`,
             players: [{
@@ -210,12 +219,12 @@ class WebSocketService {
             }],
             createdAt: Date.now(),
             maxPlayers: 4,
-            isPrivate: false,
+            isPrivate: isPrivate,
             creatorId: event.payload.playerId
           };
           
-          // Store the room
-          this.activeRooms.set(roomCode, newRoom);
+          // Store the room in the shared map
+          activeRoomsMap.set(roomCode, newRoom);
           
           this.emit('room_created', { 
             room: { 
@@ -224,7 +233,7 @@ class WebSocketService {
               playerCount: 1,
               maxPlayers: 4,
               creatorId: event.payload.playerId,
-              isPrivate: false
+              isPrivate: isPrivate
             } 
           });
         }, 300);
@@ -233,16 +242,16 @@ class WebSocketService {
       case 'join_room':
         setTimeout(() => {
           const roomCode = event.payload.roomCode;
-          const room = this.activeRooms.get(roomCode);
+          const room = activeRoomsMap.get(roomCode);
           
           if (!room) {
-            // Room not found
-            this.emit('error', { 
-              message: `Room with code ${roomCode} not found.` 
-            });
+            // Room not found - send error in Brazilian Portuguese
+            const errorMessage = translations.messages.errorRoomNotFound(roomCode);
+            
+            this.emit('error', { message: errorMessage });
             toast({
-              title: "Error",
-              description: `Room with code ${roomCode} not found.`,
+              title: translations.app.error,
+              description: errorMessage,
               variant: "destructive"
             });
             return;
@@ -266,7 +275,8 @@ class WebSocketService {
             players: room.players,
             messages: [], // Messages would be stored and retrieved in a real implementation
             creatorId: room.creatorId,
-            gameStarted: false // Game status would be tracked in a real implementation
+            gameStarted: false, // Game status would be tracked in a real implementation
+            isPrivate: room.isPrivate
           };
           
           // Emit room joined event
@@ -278,8 +288,8 @@ class WebSocketService {
               message: {
                 id: `msg-${Date.now()}`,
                 playerId: 'system',
-                nickname: 'System',
-                message: `${event.payload.nickname} joined the room`,
+                nickname: 'Sistema',
+                message: translations.messages.playerJoined(event.payload.nickname),
                 timestamp: Date.now(),
               }
             });
@@ -292,7 +302,7 @@ class WebSocketService {
           // Convert active rooms to array for room list
           const rooms: Room[] = [];
           
-          this.activeRooms.forEach(room => {
+          activeRoomsMap.forEach(room => {
             if (!room.isPrivate) { // Only show public rooms
               rooms.push({
                 code: room.code,
@@ -314,7 +324,7 @@ class WebSocketService {
         setTimeout(() => {
           // Get stored player info
           const playerId = localStorage.getItem('mauMauPlayerId') || 'unknown';
-          const nickname = localStorage.getItem('mauMauNickname') || 'Guest';
+          const nickname = localStorage.getItem('mauMauNickname') || 'Convidado';
           
           this.emit('chat_message', {
             message: {
@@ -331,8 +341,8 @@ class WebSocketService {
       case 'start_game':
         setTimeout(() => {
           toast({
-            title: "Game Started!",
-            description: "The game has been started by the room creator.",
+            title: translations.messages.gameStarted,
+            description: translations.messages.gameStartedByHost,
           });
           
           this.emit('game_started', { roomCode: event.payload.roomCode });
@@ -343,12 +353,12 @@ class WebSocketService {
         setTimeout(() => {
           const roomCode = event.payload.roomCode;
           const targetId = event.payload.targetPlayerId;
-          const room = this.activeRooms.get(roomCode);
+          const room = activeRoomsMap.get(roomCode);
           
           if (room) {
             // Find the player to kick
             const playerIndex = room.players.findIndex(p => p.id === targetId);
-            let kickedNickname = "Player";
+            let kickedNickname = "Jogador";
             
             if (playerIndex >= 0) {
               kickedNickname = room.players[playerIndex].nickname;
@@ -357,10 +367,10 @@ class WebSocketService {
             }
             
             if (targetId === localStorage.getItem('mauMauPlayerId')) {
-              this.emit('player_kicked', { reason: 'You have been kicked from the room' });
+              this.emit('player_kicked', { reason: translations.messages.youWereKicked });
               toast({
-                title: "Kicked",
-                description: "You have been removed from the room",
+                title: translations.app.error,
+                description: translations.messages.youWereKicked,
                 variant: "destructive"
               });
             } else {
@@ -369,8 +379,8 @@ class WebSocketService {
                 message: {
                   id: `msg-${Date.now()}`,
                   playerId: 'system',
-                  nickname: 'System',
-                  message: `${kickedNickname} has been kicked from the room`,
+                  nickname: 'Sistema',
+                  message: translations.messages.playerKicked(kickedNickname),
                   timestamp: Date.now(),
                 }
               });
@@ -383,7 +393,7 @@ class WebSocketService {
         setTimeout(() => {
           const roomCode = event.payload.roomCode;
           const playerId = event.payload.playerId;
-          const room = this.activeRooms.get(roomCode);
+          const room = activeRoomsMap.get(roomCode);
           
           if (room) {
             // Find and remove the player
@@ -395,7 +405,7 @@ class WebSocketService {
               
               // If no players left, remove the room
               if (room.players.length === 0) {
-                this.activeRooms.delete(roomCode);
+                activeRoomsMap.delete(roomCode);
               } else if (playerId === room.creatorId && room.players.length > 0) {
                 // If creator left, assign a new creator
                 room.creatorId = room.players[0].id;
@@ -406,8 +416,8 @@ class WebSocketService {
                 message: {
                   id: `msg-${Date.now()}`,
                   playerId: 'system',
-                  nickname: 'System',
-                  message: `${playerNickname} left the room`,
+                  nickname: 'Sistema',
+                  message: translations.messages.playerLeft(playerNickname),
                   timestamp: Date.now(),
                 }
               });

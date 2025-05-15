@@ -4,6 +4,7 @@ import { websocketService, Room, ChatMessage, ConnectionStatus, WebSocketEvent }
 import { playerService, PlayerInfo } from '@/services/playerService';
 import { useToast } from '@/components/ui/use-toast';
 import { GameState } from '@/types/game';
+import translations from '@/localization/pt-BR';
 
 interface RoomData {
   code: string;
@@ -16,6 +17,7 @@ interface RoomData {
   messages: ChatMessage[];
   gameStarted: boolean;
   creatorId: string;
+  isPrivate?: boolean;
 }
 
 interface MultiplayerContextType {
@@ -32,7 +34,7 @@ interface MultiplayerContextType {
   setNickname: (nickname: string) => void;
   
   // Room actions
-  createRoom: () => void;
+  createRoom: (isPrivate?: boolean) => void;
   joinRoom: (roomCode: string) => void;
   leaveRoom: () => void;
   kickPlayer: (playerId: string) => void;
@@ -81,7 +83,7 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
         } catch (error) {
           console.error('Failed to connect to WebSocket:', error);
-          setError('Failed to connect to game server');
+          setError(translations.messages.connectionLost);
         }
       }
     };
@@ -95,8 +97,8 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
         
         if (data.status === 'disconnected') {
           toast({
-            title: "Disconnected",
-            description: "Connection to game server lost",
+            title: translations.messages.disconnected,
+            description: translations.messages.connectionLost,
             variant: "destructive"
           });
         }
@@ -127,11 +129,12 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
           messages: [],
           gameStarted: false,
           creatorId: playerInfo?.playerId || '',
+          isPrivate: data.room.isPrivate,
         });
         
         toast({
-          title: "Room Created",
-          description: `Room code: ${data.room.code}`,
+          title: translations.messages.roomCreated,
+          description: `${translations.lobby.roomCode}: ${data.room.code}`,
         });
       });
     
@@ -160,7 +163,7 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     const playerKickedUnsubscribe = websocketService.on<{ reason: string }>('player_kicked', 
       (data) => {
         toast({
-          title: "Kicked from Room",
+          title: translations.app.error,
           description: data.reason,
           variant: "destructive"
         });
@@ -221,14 +224,14 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Connect to WebSocket after authentication
     websocketService.connect().catch(error => {
       console.error('Failed to connect to WebSocket:', error);
-      setError('Failed to connect to game server');
+      setError(translations.messages.connectionLost);
     });
   }, []);
 
   // Room actions
-  const createRoom = useCallback(() => {
+  const createRoom = useCallback((isPrivate: boolean = false) => {
     if (!isAuthenticated || !playerInfo) {
-      setError('You must be logged in to create a room');
+      setError('Você precisa estar logado para criar uma sala');
       return;
     }
     
@@ -238,14 +241,15 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
       type: 'create_room',
       payload: {
         nickname: playerInfo.nickname,
-        playerId: playerInfo.playerId
+        playerId: playerInfo.playerId,
+        isPrivate
       }
     });
   }, [isAuthenticated, playerInfo]);
 
   const joinRoom = useCallback((roomCode: string) => {
     if (!isAuthenticated || !playerInfo) {
-      setError('You must be logged in to join a room');
+      setError('Você precisa estar logado para entrar em uma sala');
       return;
     }
     
@@ -283,8 +287,8 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Only creator can kick
     if (currentRoom.creatorId !== playerInfo.playerId) {
       toast({
-        title: "Permission Denied",
-        description: "Only the room creator can kick players",
+        title: translations.messages.permissionDenied,
+        description: translations.messages.onlyHostCanKick,
         variant: "destructive"
       });
       return;
@@ -305,8 +309,8 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Only creator can start the game
     if (currentRoom.creatorId !== playerInfo.playerId) {
       toast({
-        title: "Permission Denied",
-        description: "Only the room creator can start the game",
+        title: translations.messages.permissionDenied,
+        description: translations.messages.onlyHostCanStart,
         variant: "destructive"
       });
       return;

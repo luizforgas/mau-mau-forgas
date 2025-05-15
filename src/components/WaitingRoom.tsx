@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Chat from '@/components/Chat';
 import { toast } from '@/hooks/use-toast';
+import translations from '@/localization/pt-BR';
 
 const WaitingRoom: React.FC = () => {
   const { 
@@ -32,8 +33,8 @@ const WaitingRoom: React.FC = () => {
   const copyRoomCode = () => {
     navigator.clipboard.writeText(currentRoom.code);
     toast({
-      title: "Room code copied!",
-      description: "Share this code with friends to join",
+      title: translations.messages.roomCodeCopied,
+      description: translations.messages.shareCodeWithFriends,
     });
   };
   
@@ -42,7 +43,7 @@ const WaitingRoom: React.FC = () => {
       {/* Room info and player list */}
       <Card className="md:col-span-2 bg-black/30 border border-white/10 backdrop-blur-sm shadow-lg p-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Waiting Room</h2>
+          <h2 className="text-2xl font-bold text-white">{translations.waitingRoom.title}</h2>
           <div className="flex items-center gap-2">
             <span className="text-sm bg-black/40 px-3 py-1 rounded-full text-white font-mono">
               {currentRoom.code}
@@ -60,7 +61,9 @@ const WaitingRoom: React.FC = () => {
         
         <div className="space-y-4">
           <div className="bg-black/20 rounded-md p-4">
-            <h3 className="text-md font-medium text-white mb-3">Players ({playerCount}/4)</h3>
+            <h3 className="text-md font-medium text-white mb-3">
+              {translations.waitingRoom.players} ({playerCount}/4)
+            </h3>
             <div className="space-y-2">
               {currentRoom.players.map((player) => (
                 <div 
@@ -72,7 +75,7 @@ const WaitingRoom: React.FC = () => {
                     <span className="text-white">{player.nickname}</span>
                     {player.isCreator && (
                       <span className="text-xs bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded">
-                        Host
+                        {translations.waitingRoom.host}
                       </span>
                     )}
                   </div>
@@ -99,7 +102,7 @@ const WaitingRoom: React.FC = () => {
               className="text-gray-300 border-gray-700"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Leave Room
+              {translations.waitingRoom.leaveRoom}
             </Button>
             
             {isCreator && (
@@ -109,15 +112,15 @@ const WaitingRoom: React.FC = () => {
                 className="bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto"
               >
                 <PlayCircle className="mr-2 h-5 w-5" />
-                Start Game
-                {playerCount < minPlayersRequired && " (Need more players)"}
+                {translations.waitingRoom.startGame}
+                {playerCount < minPlayersRequired && ` (${translations.waitingRoom.needMorePlayers})`}
               </Button>
             )}
           </div>
           
           {!isCreator && (
             <p className="text-center text-sm text-gray-400 mt-2">
-              Waiting for the host to start the game...
+              {translations.waitingRoom.waitingForHost}
             </p>
           )}
         </div>
@@ -127,7 +130,7 @@ const WaitingRoom: React.FC = () => {
       <Card className="bg-black/30 border border-white/10 backdrop-blur-sm shadow-lg p-4 h-[500px] flex flex-col">
         <h3 className="text-lg font-medium text-white flex items-center px-2 mb-2">
           <MessageCircle className="mr-2 h-4 w-4" />
-          Room Chat
+          {translations.waitingRoom.roomChat}
         </h3>
         <Separator className="bg-white/10 my-2" />
         <Chat />
