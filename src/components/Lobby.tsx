@@ -27,10 +27,19 @@ const Lobby: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('browse');
   const [isPrivate, setIsPrivate] = useState<boolean>(false);
   
-  // Load public rooms on component mount
+  // Load public rooms on component mount and periodically refresh
   useEffect(() => {
     getPublicRooms();
-  }, [getPublicRooms]);
+    
+    // Set up periodic refresh of room list
+    const refreshInterval = setInterval(() => {
+      if (activeTab === 'browse') {
+        getPublicRooms();
+      }
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [getPublicRooms, activeTab]);
   
   // Handle joining by code
   const handleJoinByCode = (e: React.FormEvent) => {

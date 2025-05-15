@@ -8,18 +8,18 @@ export interface PlayerInfo {
 }
 
 class PlayerService {
-  // Local storage keys
+  // Session storage keys
   private PLAYER_ID_KEY = 'mauMauPlayerId';
   private NICKNAME_KEY = 'mauMauNickname';
   private CURRENT_ROOM_KEY = 'mauMauCurrentRoom';
 
   // Initialize or retrieve player ID
   getOrCreatePlayerId(): string {
-    let playerId = localStorage.getItem(this.PLAYER_ID_KEY);
+    let playerId = sessionStorage.getItem(this.PLAYER_ID_KEY);
     
     if (!playerId) {
       playerId = uuidv4();
-      localStorage.setItem(this.PLAYER_ID_KEY, playerId);
+      sessionStorage.setItem(this.PLAYER_ID_KEY, playerId);
     }
     
     return playerId;
@@ -27,23 +27,23 @@ class PlayerService {
   
   // Set player nickname
   setNickname(nickname: string): void {
-    localStorage.setItem(this.NICKNAME_KEY, nickname);
+    sessionStorage.setItem(this.NICKNAME_KEY, nickname);
   }
   
   // Get player nickname
   getNickname(): string | null {
-    return localStorage.getItem(this.NICKNAME_KEY);
+    return sessionStorage.getItem(this.NICKNAME_KEY);
   }
   
   // Check if player has completed initial setup
   isPlayerSetup(): boolean {
-    return !!this.getNickname() && !!localStorage.getItem(this.PLAYER_ID_KEY);
+    return !!this.getNickname() && !!sessionStorage.getItem(this.PLAYER_ID_KEY);
   }
   
   // Get full player info
   getPlayerInfo(): PlayerInfo | null {
-    const playerId = localStorage.getItem(this.PLAYER_ID_KEY);
-    const nickname = localStorage.getItem(this.NICKNAME_KEY);
+    const playerId = sessionStorage.getItem(this.PLAYER_ID_KEY);
+    const nickname = sessionStorage.getItem(this.NICKNAME_KEY);
     
     if (!playerId || !nickname) {
       return null;
@@ -52,29 +52,29 @@ class PlayerService {
     return {
       playerId,
       nickname,
-      currentRoom: localStorage.getItem(this.CURRENT_ROOM_KEY) || undefined
+      currentRoom: sessionStorage.getItem(this.CURRENT_ROOM_KEY) || undefined
     };
   }
   
   // Set current room
   setCurrentRoom(roomCode?: string): void {
     if (roomCode) {
-      localStorage.setItem(this.CURRENT_ROOM_KEY, roomCode);
+      sessionStorage.setItem(this.CURRENT_ROOM_KEY, roomCode);
     } else {
-      localStorage.removeItem(this.CURRENT_ROOM_KEY);
+      sessionStorage.removeItem(this.CURRENT_ROOM_KEY);
     }
   }
   
   // Get current room
   getCurrentRoom(): string | null {
-    return localStorage.getItem(this.CURRENT_ROOM_KEY);
+    return sessionStorage.getItem(this.CURRENT_ROOM_KEY);
   }
   
   // Clear all player data (for logout)
   clearPlayerData(): void {
-    localStorage.removeItem(this.PLAYER_ID_KEY);
-    localStorage.removeItem(this.NICKNAME_KEY);
-    localStorage.removeItem(this.CURRENT_ROOM_KEY);
+    sessionStorage.removeItem(this.PLAYER_ID_KEY);
+    sessionStorage.removeItem(this.NICKNAME_KEY);
+    sessionStorage.removeItem(this.CURRENT_ROOM_KEY);
   }
 }
 

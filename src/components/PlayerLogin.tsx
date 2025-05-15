@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMultiplayer } from '@/contexts/MultiplayerContext';
+import { toast } from "@/hooks/use-toast";
 import translations from '@/localization/pt-BR';
 
 const PlayerLogin: React.FC = () => {
@@ -14,7 +15,12 @@ const PlayerLogin: React.FC = () => {
     e.preventDefault();
     
     if (nickname.trim().length < 3) {
-      return; // Nickname too short
+      toast({
+        title: translations.app.error,
+        description: translations.auth.nicknameRequirements,
+        variant: "destructive"
+      });
+      return;
     }
     
     submitNickname(nickname.trim());

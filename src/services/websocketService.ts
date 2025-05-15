@@ -54,8 +54,11 @@ interface ActiveRoom {
   creatorId: string;
 }
 
-// Create singleton instance to ensure rooms are shared across the application
-let activeRoomsMap: Map<string, ActiveRoom> = new Map();
+// Create a shared storage for active rooms using window global
+// This ensures all WebSocketService instances share the same room data
+if (!window.activeRoomsMap) {
+  window.activeRoomsMap = new Map<string, ActiveRoom>();
+}
 
 class WebSocketService {
   private socket: WebSocket | null = null;
@@ -65,10 +68,14 @@ class WebSocketService {
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private eventListeners: Map<string, Function[]> = new Map();
   private serverUrl: string;
+  private activeRoomsMap: Map<string, ActiveRoom>;
   
   constructor() {
     // In a real app, this would come from environment variables
     this.serverUrl = 'wss://mau-mau-server.example.com';
+    
+    // Use the shared global room storage
+    this.activeRoomsMap = window.activeRoomsMap;
     
     // For this demo, we'll use a mock WebSocket
     // In a real app, replace with actual WebSocket connection
@@ -194,7 +201,7 @@ class WebSocketService {
     }
     
     // If code already exists, generate a new one (avoid collisions)
-    if (activeRoomsMap.has(code)) {
+    if (this.activeRoomsMap.has(code)) {
       return this.generateRoomCode();
     }
     
@@ -224,7 +231,7 @@ class WebSocketService {
           };
           
           // Store the room in the shared map
-          activeRoomsMap.set(roomCode, newRoom);
+          this.activeRoomsMap.set(roomCode, newRoom);
           
           this.emit('room_created', { 
             room: { 
@@ -242,7 +249,7 @@ class WebSocketService {
       case 'join_room':
         setTimeout(() => {
           const roomCode = event.payload.roomCode;
-          const room = activeRoomsMap.get(roomCode);
+          const room = this.activeRoomsMap.get(roomCode);
           
           if (!room) {
             // Room not found - send error in Brazilian Portuguese
@@ -302,7 +309,7 @@ class WebSocketService {
           // Convert active rooms to array for room list
           const rooms: Room[] = [];
           
-          activeRoomsMap.forEach(room => {
+          this.activeRoomsMap.forEach(room => {
             if (!room.isPrivate) { // Only show public rooms
               rooms.push({
                 code: room.code,
@@ -323,8 +330,8 @@ class WebSocketService {
         // Echo the chat message back as if from server
         setTimeout(() => {
           // Get stored player info
-          const playerId = localStorage.getItem('mauMauPlayerId') || 'unknown';
-          const nickname = localStorage.getItem('mauMauNickname') || 'Convidado';
+          const playerId = sessionStorage.getItem('mauMauPlayerId') || 'unknown';
+          const nickname = sessionStorage.getItem('mauMauNickname') || 'Convidado';
           
           this.emit('chat_message', {
             message: {
@@ -353,7 +360,7 @@ class WebSocketService {
         setTimeout(() => {
           const roomCode = event.payload.roomCode;
           const targetId = event.payload.targetPlayerId;
-          const room = activeRoomsMap.get(roomCode);
+          const room = this.activeRoomsMap.get(roomCode);
           
           if (room) {
             // Find the player to kick
@@ -366,7 +373,7 @@ class WebSocketService {
               room.players.splice(playerIndex, 1);
             }
             
-            if (targetId === localStorage.getItem('mauMauPlayerId')) {
+            if (targetId === sessionStorage.getItem('mauMauPlayerId')) {
               this.emit('player_kicked', { reason: translations.messages.youWereKicked });
               toast({
                 title: translations.app.error,
@@ -393,7 +400,7 @@ class WebSocketService {
         setTimeout(() => {
           const roomCode = event.payload.roomCode;
           const playerId = event.payload.playerId;
-          const room = activeRoomsMap.get(roomCode);
+          const room = this.activeRoomsMap.get(roomCode);
           
           if (room) {
             // Find and remove the player
@@ -405,7 +412,7 @@ class WebSocketService {
               
               // If no players left, remove the room
               if (room.players.length === 0) {
-                activeRoomsMap.delete(roomCode);
+                this.activeRoomsMap.delete(roomCode);
               } else if (playerId === room.creatorId && room.players.length > 0) {
                 // If creator left, assign a new creator
                 room.creatorId = room.players[0].id;
@@ -426,6 +433,13 @@ class WebSocketService {
         }, 300);
         break;
     }
+  }
+}
+
+// Augment Window interface to include our global rooms storage
+declare global {
+  interface Window {
+    activeRoomsMap: Map<string, ActiveRoom>;
   }
 }
 
