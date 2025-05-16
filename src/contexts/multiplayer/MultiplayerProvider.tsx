@@ -1,14 +1,19 @@
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useMultiplayerHandlers } from './eventHandlers';
 import { useMultiplayerEventListeners } from './eventListeners';
 import { MultiplayerContextType } from './types';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import translations from '@/localization/pt-BR';
 
 const MultiplayerContext = createContext<MultiplayerContextType | undefined>(undefined);
 
 export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const handlers = useMultiplayerHandlers();
+  const { user } = useAuth();
+  const { toast } = useToast();
   
   // Set up WebSocket event listeners
   useMultiplayerEventListeners(
@@ -21,6 +26,69 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     handlers.setError,
     handlers.currentRoom
   );
+
+  // Sync authenticated user with playerInfo when user auth state changes
+  useEffect(() => {
+    const syncUserWithPlayerInfo = async () => {
+      if (user) {
+        try {
+          // Get the user's nickname from the users table
+          const { data, error } = await supabase
+            .from('users')
+            .select('nickname')
+            .eq('id', user.id)
+            .single();
+            
+          if (error) {
+            console.error('Error fetching user profile:', error);
+            return;
+          }
+          
+          if (data && data.nickname) {
+            console.log('Setting nickname from user profile:', data.nickname);
+            handlers.setNickname(data.nickname);
+          } else {
+            // Fallback to metadata if no record in users table
+            const nickname = user.user_metadata?.nickname;
+            if (nickname) {
+              console.log('Setting nickname from user metadata:', nickname);
+              handlers.setNickname(nickname);
+              
+              // Try to create user record if it doesn't exist
+              try {
+                const { error: insertError } = await supabase
+                  .from('users')
+                  .insert({
+                    id: user.id,
+                    nickname: nickname
+                  });
+                  
+                if (insertError && !insertError.message.includes('duplicate')) {
+                  console.error('Failed to create user record:', insertError);
+                }
+              } catch (err) {
+                console.warn('Error ensuring user record exists:', err);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error syncing user with player info:', err);
+          toast({
+            title: 'Error',
+            description: translations.auth.profileLoadError,
+            variant: 'destructive'
+          });
+        }
+      }
+    };
+    
+    // Use setTimeout to avoid potential deadlocks with auth state changes
+    if (user) {
+      setTimeout(() => {
+        syncUserWithPlayerInfo();
+      }, 0);
+    }
+  }, [user, handlers.setNickname, toast]);
 
   // Context value
   const value: MultiplayerContextType = {
