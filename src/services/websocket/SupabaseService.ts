@@ -1,4 +1,3 @@
-
 import { ChatMessage, Room, ConnectionStatus, WebSocketEvent } from './types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -369,48 +368,42 @@ export class SupabaseService {
     try {
       console.log('Creating room with payload:', payload);
       
-      // Verify user exists in public.users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', payload.playerId)
-        .single();
-      
-      if (userError || !userData) {
-        console.error('User not found in public.users table:', userError || 'No user data');
-        
-        // Check if user exists in auth.users but not in public.users
-        const { data: session } = await supabase.auth.getSession();
-        if (session.session) {
-          const userId = session.session.user.id;
-          const userNickname = payload.nickname || 'Unknown Player';
-          
-          // User exists in auth but not in public.users, use upsert instead of insert
-          const { error: upsertError } = await supabase
-            .from('users')
-            .upsert({
-              id: userId,
-              nickname: userNickname
-            }, {
-              onConflict: 'id'
-            });
-            
-          if (upsertError) {
-            console.error('Failed to create user record:', upsertError);
-            this.emit('error', { 
-              message: `Erro ao criar usuário: ${upsertError.message}` 
-            });
-            return;
-          }
-          
-          console.log('Created or updated user record for auth user:', userId);
-        } else {
-          this.emit('error', { 
-            message: 'Usuário não está autenticado ou não existe no banco de dados.' 
-          });
-          return;
-        }
+      // Get the current user session
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        this.emit('error', { 
+          message: 'Usuário não está autenticado.' 
+        });
+        return;
       }
+      
+      const userId = session.session.user.id;
+      const userNickname = payload.nickname || 'Unknown Player';
+      
+      // IMPORTANT: First ensure the user exists in the users table
+      // Use upsert to create or update the user record if needed
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: userId,
+          nickname: userNickname
+        }, {
+          onConflict: 'id'
+        });
+        
+      if (userError) {
+        console.error('Failed to create or update user record:', userError);
+        this.emit('error', { 
+          message: `Erro ao criar usuário: ${userError.message}` 
+        });
+        return;
+      }
+      
+      console.log('User record ensured for auth user:', userId);
+      
+      // Important: Wait a moment to ensure the user record is fully committed
+      // This helps avoid race conditions with foreign key constraints
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Generate a random room code (6 uppercase letters)
       const generateRoomCode = () => {
@@ -424,11 +417,11 @@ export class SupabaseService {
 
       const roomCode = generateRoomCode();
       
-      // Insert new room in the rooms table
+      // Insert new room in the rooms table - now using the userId from the session
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
         .insert({
-          host_id: payload.playerId,
+          host_id: userId, // Use the userId from the session directly
           is_private: payload.isPrivate,
           code: roomCode,
           max_players: 4 // Default to 4 players
@@ -451,7 +444,7 @@ export class SupabaseService {
         .from('room_players')
         .insert({
           room_id: roomData.id,
-          user_id: payload.playerId
+          user_id: userId // Use the userId from the session
         });
 
       if (playerError) {
