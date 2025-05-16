@@ -32,6 +32,7 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
     const syncUserWithPlayerInfo = async () => {
       if (user) {
         try {
+          console.log('Syncing user profile with player info');
           // Get the user's nickname from the users table
           const { data, error } = await supabase
             .from('users')

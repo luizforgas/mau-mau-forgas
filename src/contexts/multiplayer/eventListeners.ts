@@ -44,13 +44,14 @@ export function useMultiplayerEventListeners(
     // Handle room creation response
     const roomCreatedUnsubscribe = websocketService.on<{ room: Room }>('room_created', 
       (data) => {
+        console.log('Room created event received:', data);
         setIsLoading(false);
         
         // Save room code
         playerService.setCurrentRoom(data.room.code);
         
         // Create initial room data
-        setCurrentRoom({
+        const newRoom = {
           code: data.room.code,
           players: [
             { id: playerInfo?.playerId || '', nickname: playerInfo?.nickname || '', isCreator: true }
@@ -59,7 +60,11 @@ export function useMultiplayerEventListeners(
           gameStarted: false,
           creatorId: playerInfo?.playerId || '',
           isPrivate: data.room.isPrivate,
-        });
+        };
+        
+        setCurrentRoom(newRoom);
+        
+        console.log('Setting current room after creation:', newRoom);
         
         toast({
           title: translations.messages.roomCreated,
@@ -70,14 +75,19 @@ export function useMultiplayerEventListeners(
     // Handle room join response
     const roomJoinedUnsubscribe = websocketService.on<{ room: any }>('room_joined', 
       (data) => {
+        console.log('Room joined event received:', data);
         setIsLoading(false);
         setCurrentRoom(data.room);
         playerService.setCurrentRoom(data.room.code);
+        
+        console.log('Current room set after joining:', data.room);
       });
     
     // Handle room deletion
     const roomDeletedUnsubscribe = websocketService.on<{ roomCode: string }>('room_deleted',
       (data) => {
+        console.log('Room deleted event received:', data);
+        
         // If the current room was deleted and user is still viewing it
         if (currentRoom && currentRoom.code === data.roomCode) {
           toast({
@@ -132,6 +142,7 @@ export function useMultiplayerEventListeners(
     // Handle errors from server
     const errorUnsubscribe = websocketService.on<{ message: string }>('error',
       (data) => {
+        console.error('Server error:', data.message);
         setError(data.message);
         setIsLoading(false);
         
@@ -139,6 +150,49 @@ export function useMultiplayerEventListeners(
         setTimeout(() => {
           setError(null);
         }, 5000);
+      });
+      
+    // Handle player joining room
+    const playerJoinedUnsubscribe = websocketService.on<{ 
+      roomCode: string, 
+      player: { id: string, nickname: string, isCreator: boolean } 
+    }>('player_joined', 
+      (data) => {
+        console.log('Player joined event:', data);
+        
+        if (currentRoom && currentRoom.code === data.roomCode) {
+          setCurrentRoom({
+            ...currentRoom,
+            players: [...currentRoom.players, data.player]
+          });
+          
+          toast({
+            title: translations.messages.playerJoined(data.player.nickname),
+            description: '',
+          });
+        }
+      });
+      
+    // Handle player leaving room
+    const playerLeftUnsubscribe = websocketService.on<{ 
+      roomCode: string,
+      playerId: string,
+      playerName: string
+    }>('player_left', 
+      (data) => {
+        console.log('Player left event:', data);
+        
+        if (currentRoom && currentRoom.code === data.roomCode) {
+          setCurrentRoom({
+            ...currentRoom,
+            players: currentRoom.players.filter(player => player.id !== data.playerId)
+          });
+          
+          toast({
+            title: translations.messages.playerLeft(data.playerName),
+            description: '',
+          });
+        }
       });
 
     return () => {
@@ -151,6 +205,8 @@ export function useMultiplayerEventListeners(
       playerKickedUnsubscribe();
       gameStartedUnsubscribe();
       errorUnsubscribe();
+      playerJoinedUnsubscribe();
+      playerLeftUnsubscribe();
     };
   }, [toast, playerInfo, currentRoom, setStatus, setCurrentRoom, setPublicRooms, setChatMessages, setIsLoading, setError]);
 
@@ -163,10 +219,12 @@ export function useMultiplayerEventListeners(
         // Connect to WebSocket
         try {
           await websocketService.connect();
+          console.log('WebSocket connected successfully');
           
           // Check if player was in a room
           const currentRoomCode = player.currentRoom;
           if (currentRoomCode) {
+            console.log('Rejoining previous room:', currentRoomCode);
             websocketService.sendEvent({
               type: 'join_room',
               payload: {
@@ -184,6 +242,7 @@ export function useMultiplayerEventListeners(
     };
     
     if (playerInfo) {
+      console.log('Setting up player with info:', playerInfo);
       setupPlayer();
     }
   }, [playerInfo, setError]);

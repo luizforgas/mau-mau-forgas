@@ -1,3 +1,4 @@
+
 export const translations = {
   // Global terms
   app: {
@@ -113,6 +114,8 @@ export const translations = {
     gameStartedByHost: "O jogo foi iniciado pelo anfitrião da sala.",
     disconnected: "Desconectado",
     connectionLost: "Conexão com o servidor de jogo perdida",
+    roomDeleted: "Sala removida",
+    roomNoLongerExists: "A sala não existe mais",
   },
 };
 
