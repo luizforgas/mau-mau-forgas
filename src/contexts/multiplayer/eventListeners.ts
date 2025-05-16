@@ -81,8 +81,8 @@ export function useMultiplayerEventListeners(
         // If the current room was deleted and user is still viewing it
         if (currentRoom && currentRoom.code === data.roomCode) {
           toast({
-            title: translations.messages.roomDeleted,
-            description: translations.messages.roomNoLongerExists,
+            title: translations.app.error,
+            description: translations.messages.connectionLost, // Using existing translation key instead
           });
           
           // Clear room data
