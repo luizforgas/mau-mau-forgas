@@ -75,6 +75,22 @@ export function useMultiplayerEventListeners(
         playerService.setCurrentRoom(data.room.code);
       });
     
+    // Handle room deletion
+    const roomDeletedUnsubscribe = websocketService.on<{ roomCode: string }>('room_deleted',
+      (data) => {
+        // If the current room was deleted and user is still viewing it
+        if (currentRoom && currentRoom.code === data.roomCode) {
+          toast({
+            title: translations.messages.roomDeleted,
+            description: translations.messages.roomNoLongerExists,
+          });
+          
+          // Clear room data
+          setCurrentRoom(null);
+          playerService.setCurrentRoom(undefined);
+        }
+      });
+    
     // Handle chat messages
     const chatMessageUnsubscribe = websocketService.on<{ message: any }>('chat_message', 
       (data) => {
@@ -129,6 +145,7 @@ export function useMultiplayerEventListeners(
       // Clean up all event listeners
       roomCreatedUnsubscribe();
       roomJoinedUnsubscribe();
+      roomDeletedUnsubscribe();
       chatMessageUnsubscribe();
       roomListUnsubscribe();
       playerKickedUnsubscribe();

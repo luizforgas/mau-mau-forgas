@@ -1,3 +1,4 @@
+
 import { ChatMessage, Room, ConnectionStatus, WebSocketEvent } from './types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -54,6 +55,8 @@ export class SupabaseService {
             this.handleNewRoom(payload.new);
           } else if (payload.eventType === 'UPDATE') {
             this.handleRoomUpdate(payload.new);
+          } else if (payload.eventType === 'DELETE') {
+            this.handleRoomDelete(payload.old);
           }
         })
       .subscribe();
@@ -87,6 +90,15 @@ export class SupabaseService {
       .subscribe();
     
     this.channels.set('messages', messagesChannel);
+  }
+
+  // Handle room deletion
+  private handleRoomDelete(room: any) {
+    // Notify any subscribers that room has been deleted
+    this.emit('room_deleted', { roomCode: room.code });
+    
+    // Also update the room list
+    this.getRoomList();
   }
 
   // Handle new room creation
@@ -126,135 +138,201 @@ export class SupabaseService {
 
   // Handle player joining a room
   private async handlePlayerJoin(playerData: any) {
-    // Get the room information
-    const { data: roomData } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('id', playerData.room_id)
-      .single();
-
-    if (!roomData) return;
-
-    // Get the user information
-    // Fixed: Replaced join query with separate query for user data
-    const { data: userData } = await supabase
-      .from('users')
-      .select('nickname')
-      .eq('id', playerData.user_id)
-      .single();
-
-    // Get all players in the room
-    const { data: playersData } = await supabase
-      .from('room_players')
-      .select('user_id')
-      .eq('room_id', playerData.room_id);
-
-    const playerCount = playersData?.length || 0;
-
-    // Check if this is the current user joining a room
-    const { data: session } = await supabase.auth.getSession();
-    if (session.session && session.session.user.id === playerData.user_id) {
-      // Get all players with their nicknames
-      // Fixed: Correctly query players with their nicknames using two separate queries
-      const { data: roomPlayers } = await supabase
-        .from('room_players')
-        .select('user_id')
-        .eq('room_id', playerData.room_id);
-        
-      // Get nicknames for each player
-      const players = [];
-      if (roomPlayers) {
-        for (const player of roomPlayers) {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('nickname')
-            .eq('id', player.user_id)
-            .single();
-            
-          players.push({
-            id: player.user_id,
-            nickname: userData?.nickname || 'Unknown',
-            isCreator: player.user_id === roomData.host_id
-          });
-        }
-      }
-
-      // Get messages for the room
-      // Fixed: Correctly query messages with sender nicknames using two separate queries
-      const { data: roomMessages } = await supabase
-        .from('messages')
+    try {
+      // Get the room information
+      const { data: roomData, error: roomError } = await supabase
+        .from('rooms')
         .select('*')
-        .eq('room_id', playerData.room_id)
-        .order('created_at', { ascending: true });
-        
-      // Get sender nickname for each message
-      const messages = [];
-      if (roomMessages) {
-        for (const message of roomMessages) {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('nickname')
-            .eq('id', message.user_id)
-            .single();
-            
-          messages.push({
-            id: message.id,
-            playerId: message.user_id,
-            playerName: userData?.nickname || 'Unknown',
-            content: message.content,
-            timestamp: message.created_at
-          });
-        }
+        .eq('id', playerData.room_id)
+        .single();
+
+      if (roomError || !roomData) {
+        console.error('Error getting room data:', roomError);
+        return;
       }
 
-      // Format the room data for the client
-      const roomFullData = {
-        code: roomData.code,
-        players: players || [],
-        messages: messages || [],
-        gameStarted: !!roomData.started_at,
-        creatorId: roomData.host_id,
-        isPrivate: roomData.is_private
-      };
-
-      this.emit('room_joined', { room: roomFullData });
-    } else {
-      // Notify about player joining if room is being viewed
-      this.emit('player_joined', { 
-        roomCode: roomData.code,
-        player: {
-          id: playerData.user_id,
-          nickname: userData?.nickname || 'Unknown',
-          isCreator: playerData.user_id === roomData.host_id
-        }
-      });
-    }
-  }
-
-  // Handle player leaving a room
-  private async handlePlayerLeave(playerData: any) {
-    // Get the current user's session
-    const { data: session } = await supabase.auth.getSession();
-    
-    // If it's the current user, emit player_kicked event
-    if (session.session && session.session.user.id === playerData.user_id) {
-      this.emit('player_kicked', { 
-        reason: 'Você saiu da sala ou foi removido pelo anfitrião.'
-      });
-    } else {
       // Get the user information
-      const { data: userData } = await supabase
+      // Fixed: Replaced join query with separate query for user data
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('nickname')
         .eq('id', playerData.user_id)
         .single();
 
-      // Notify about player leaving
-      this.emit('player_left', { 
-        roomCode: playerData.room_id,
-        playerId: playerData.user_id,
-        playerName: userData?.nickname || 'Unknown'
-      });
+      if (userError) {
+        console.error('Error getting user data:', userError);
+        return;
+      }
+
+      // Get all players in the room
+      const { data: playersData, error: playersError } = await supabase
+        .from('room_players')
+        .select('user_id')
+        .eq('room_id', playerData.room_id);
+
+      if (playersError) {
+        console.error('Error getting players data:', playersError);
+        return;
+      }
+
+      const playerCount = playersData?.length || 0;
+
+      // Check if this is the current user joining a room
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session && session.session.user.id === playerData.user_id) {
+        // Get all players with their nicknames
+        // Fixed: Correctly query players with their nicknames using two separate queries
+        const { data: roomPlayers, error: roomPlayersError } = await supabase
+          .from('room_players')
+          .select('user_id')
+          .eq('room_id', playerData.room_id);
+        
+        if (roomPlayersError) {
+          console.error('Error getting room players:', roomPlayersError);
+          return;
+        }
+          
+        // Get nicknames for each player
+        const players = [];
+        if (roomPlayers) {
+          for (const player of roomPlayers) {
+            const { data: userData, error: userDataError } = await supabase
+              .from('users')
+              .select('nickname')
+              .eq('id', player.user_id)
+              .single();
+
+            if (userDataError) {
+              console.error('Error getting user nickname:', userDataError);
+              continue;
+            }
+              
+            players.push({
+              id: player.user_id,
+              nickname: userData?.nickname || 'Unknown',
+              isCreator: player.user_id === roomData.host_id
+            });
+          }
+        }
+
+        // Get messages for the room
+        // Fixed: Correctly query messages with sender nicknames using two separate queries
+        const { data: roomMessages, error: messagesError } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('room_id', playerData.room_id)
+          .order('created_at', { ascending: true });
+        
+        if (messagesError) {
+          console.error('Error getting room messages:', messagesError);
+          return;
+        }
+          
+        // Get sender nickname for each message
+        const messages = [];
+        if (roomMessages) {
+          for (const message of roomMessages) {
+            const { data: userData, error: userDataError } = await supabase
+              .from('users')
+              .select('nickname')
+              .eq('id', message.user_id)
+              .single();
+
+            if (userDataError) {
+              console.error('Error getting message sender:', userDataError);
+              continue;
+            }
+              
+            messages.push({
+              id: message.id,
+              playerId: message.user_id,
+              playerName: userData?.nickname || 'Unknown',
+              content: message.content,
+              timestamp: message.created_at
+            });
+          }
+        }
+
+        // Format the room data for the client
+        const roomFullData = {
+          code: roomData.code,
+          players: players || [],
+          messages: messages || [],
+          gameStarted: !!roomData.started_at,
+          creatorId: roomData.host_id,
+          isPrivate: roomData.is_private
+        };
+
+        console.log('Emitting room_joined event:', roomFullData);
+        this.emit('room_joined', { room: roomFullData });
+      } else {
+        // Notify about player joining if room is being viewed
+        this.emit('player_joined', { 
+          roomCode: roomData.code,
+          player: {
+            id: playerData.user_id,
+            nickname: userData?.nickname || 'Unknown',
+            isCreator: playerData.user_id === roomData.host_id
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error in handlePlayerJoin:', error);
+    }
+  }
+
+  // Handle player leaving a room
+  private async handlePlayerLeave(playerData: any) {
+    try {
+      // Get the current user's session
+      const { data: session } = await supabase.auth.getSession();
+      
+      // If it's the current user, emit player_kicked event
+      if (session.session && session.session.user.id === playerData.user_id) {
+        this.emit('player_kicked', { 
+          reason: 'Você saiu da sala ou foi removido pelo anfitrião.'
+        });
+      } else {
+        // Get the user information
+        const { data: userData } = await supabase
+          .from('users')
+          .select('nickname')
+          .eq('id', playerData.user_id)
+          .single();
+
+        // Notify about player leaving
+        this.emit('player_left', { 
+          roomCode: playerData.room_id,
+          playerId: playerData.user_id,
+          playerName: userData?.nickname || 'Unknown'
+        });
+      }
+
+      // Check if the room is now empty
+      const { count, error: countError } = await supabase
+        .from('room_players')
+        .select('*', { count: 'exact', head: true })
+        .eq('room_id', playerData.room_id);
+
+      if (countError) {
+        console.error('Error counting players in room:', countError);
+        return;
+      }
+
+      // If the room is empty (count === 0), delete it
+      if (count === 0) {
+        console.log('Room is empty, deleting room:', playerData.room_id);
+        const { error: deleteRoomError } = await supabase
+          .from('rooms')
+          .delete()
+          .eq('id', playerData.room_id);
+
+        if (deleteRoomError) {
+          console.error('Error deleting empty room:', deleteRoomError);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handlePlayerLeave:', error);
     }
   }
 
@@ -452,6 +530,13 @@ export class SupabaseService {
         this.emit('error', { 
           message: `Erro ao adicionar jogador à sala: ${playerError.message}` 
         });
+        
+        // Clean up by deleting the room if player couldn't be added
+        await supabase
+          .from('rooms')
+          .delete()
+          .eq('id', roomData.id);
+          
         return;
       }
       
@@ -469,6 +554,42 @@ export class SupabaseService {
   // Join an existing room
   private async joinRoom(payload: any): Promise<void> {
     try {
+      console.log('Joining room with payload:', payload);
+      
+      // Get the current user session
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        this.emit('error', { 
+          message: 'Usuário não está autenticado.' 
+        });
+        return;
+      }
+      
+      const userId = session.session.user.id;
+      const userNickname = payload.nickname || 'Unknown Player';
+      
+      // IMPORTANT: First ensure the user exists in the users table
+      // Use upsert to create or update the user record if needed
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: userId,
+          nickname: userNickname
+        }, {
+          onConflict: 'id'
+        });
+        
+      if (userError) {
+        console.error('Failed to create or update user record:', userError);
+        this.emit('error', { 
+          message: `Erro ao criar usuário: ${userError.message}` 
+        });
+        return;
+      }
+      
+      // Important: Wait a moment to ensure the user record is fully committed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Find the room by code
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
@@ -477,6 +598,7 @@ export class SupabaseService {
         .single();
 
       if (roomError) {
+        console.error('Room not found:', roomError);
         this.emit('error', { 
           message: `Sala com o código ${payload.roomCode} não foi encontrada.` 
         });
@@ -497,7 +619,10 @@ export class SupabaseService {
         .select('*', { count: 'exact', head: true })
         .eq('room_id', roomData.id);
 
-      if (countError) throw countError;
+      if (countError) {
+        console.error('Error checking room count:', countError);
+        throw countError;
+      }
 
       if (count && count >= roomData.max_players) {
         this.emit('error', { 
@@ -511,12 +636,16 @@ export class SupabaseService {
         .from('room_players')
         .select('*')
         .eq('room_id', roomData.id)
-        .eq('user_id', payload.playerId)
+        .eq('user_id', userId)
         .maybeSingle();
 
-      if (existingError) throw existingError;
+      if (existingError) {
+        console.error('Error checking if player is in room:', existingError);
+        throw existingError;
+      }
 
       if (existingPlayer) {
+        console.log('Player is already in room, rejoining');
         // Player is already in the room, just rejoin
         // The room_joined event will be triggered by the subscription
         return;
@@ -527,13 +656,18 @@ export class SupabaseService {
         .from('room_players')
         .insert({
           room_id: roomData.id,
-          user_id: payload.playerId
+          user_id: userId
         });
 
-      if (joinError) throw joinError;
+      if (joinError) {
+        console.error('Error joining room:', joinError);
+        throw joinError;
+      }
+
+      console.log('Player successfully joined room');
 
       // The room_joined event will be emitted by the real-time subscription
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error joining room:', error);
       this.emit('error', { 
         message: 'Erro ao entrar na sala. Tente novamente.' 
@@ -544,6 +678,19 @@ export class SupabaseService {
   // Leave a room
   private async leaveRoom(payload: any): Promise<void> {
     try {
+      console.log('Leaving room with payload:', payload);
+      
+      // Get the current user session
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        this.emit('error', { 
+          message: 'Usuário não está autenticado.' 
+        });
+        return;
+      }
+      
+      const userId = session.session.user.id;
+      
       // Find the room by code
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
@@ -551,36 +698,47 @@ export class SupabaseService {
         .eq('code', payload.roomCode)
         .single();
 
-      if (roomError) throw roomError;
+      if (roomError) {
+        console.error('Room not found:', roomError);
+        throw roomError;
+      }
 
       // Remove player from room
       const { error: leaveError } = await supabase
         .from('room_players')
         .delete()
         .eq('room_id', roomData.id)
-        .eq('user_id', payload.playerId);
+        .eq('user_id', userId);
 
-      if (leaveError) throw leaveError;
+      if (leaveError) {
+        console.error('Error leaving room:', leaveError);
+        throw leaveError;
+      }
 
       // If this player was the host, delete the room if empty or transfer ownership
-      if (roomData.host_id === payload.playerId) {
+      if (roomData.host_id === userId) {
         // Check if room is empty
         const { count, data: remainingPlayers, error: countError } = await supabase
           .from('room_players')
           .select('*', { count: 'exact' })
           .eq('room_id', roomData.id);
 
-        if (countError) throw countError;
+        if (countError) {
+          console.error('Error checking if room is empty:', countError);
+          throw countError;
+        }
 
         if (count === 0) {
           // Room is empty, delete it
+          console.log('Room is empty, deleting it', roomData.id);
           await supabase
             .from('rooms')
             .delete()
             .eq('id', roomData.id);
-        } else {
+        } else if (remainingPlayers && remainingPlayers.length > 0) {
           // Transfer ownership to the first remaining player
-          const newHostId = remainingPlayers![0].user_id;
+          const newHostId = remainingPlayers[0].user_id;
+          console.log('Transferring room ownership to:', newHostId);
           await supabase
             .from('rooms')
             .update({ host_id: newHostId })
@@ -589,7 +747,7 @@ export class SupabaseService {
       }
 
       // The player_left event will be handled by the real-time subscription
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error leaving room:', error);
       this.emit('error', { 
         message: 'Erro ao sair da sala. Tente novamente.' 
