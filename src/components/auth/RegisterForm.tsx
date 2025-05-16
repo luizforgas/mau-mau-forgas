@@ -106,8 +106,11 @@ const RegisterForm: React.FC = () => {
           description: translations.auth.registrationMessage,
         });
         
-        // Force page reload for a completely clean state
-        window.location.href = '/';
+        // Wait a moment to ensure the user record is fully created
+        setTimeout(() => {
+          // Force page reload for a completely clean state
+          window.location.href = '/';
+        }, 1000);
       }
     } catch (error: any) {
       console.error('Registration error:', error);

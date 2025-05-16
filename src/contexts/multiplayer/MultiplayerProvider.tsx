@@ -3,6 +3,7 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useMultiplayerHandlers } from './eventHandlers';
 import { useMultiplayerEventListeners } from './eventListeners';
 import { MultiplayerContextType } from './types';
+import { supabase } from '@/integrations/supabase/client';
 
 const MultiplayerContext = createContext<MultiplayerContextType | undefined>(undefined);
 
