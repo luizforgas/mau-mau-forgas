@@ -1,6 +1,6 @@
 
 import { PlayerInfo } from '@/services/playerService';
-import { Room, ChatMessage, ConnectionStatus } from '@/services/websocketService';
+import { Room, ChatMessage, ConnectionStatus } from '@/services/websocket/types';
 
 export interface RoomData {
   code: string;
