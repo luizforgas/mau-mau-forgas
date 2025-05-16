@@ -54,17 +54,19 @@ export const MultiplayerProvider: React.FC<{ children: ReactNode }> = ({ childre
               console.log('Setting nickname from user metadata:', nickname);
               handlers.setNickname(nickname);
               
-              // Try to create user record if it doesn't exist
+              // Try to create user record if it doesn't exist using upsert instead of insert
               try {
-                const { error: insertError } = await supabase
+                const { error: upsertError } = await supabase
                   .from('users')
-                  .insert({
+                  .upsert({
                     id: user.id,
                     nickname: nickname
+                  }, {
+                    onConflict: 'id'
                   });
                   
-                if (insertError && !insertError.message.includes('duplicate')) {
-                  console.error('Failed to create user record:', insertError);
+                if (upsertError) {
+                  console.error('Failed to create user record:', upsertError);
                 }
               } catch (err) {
                 console.warn('Error ensuring user record exists:', err);
