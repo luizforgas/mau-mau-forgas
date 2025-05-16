@@ -192,15 +192,15 @@ export class MockHandlers {
     setTimeout(() => {
       // Get stored player info
       const playerId = sessionStorage.getItem('mauMauPlayerId') || 'unknown';
-      const nickname = sessionStorage.getItem('mauMauNickname') || 'Convidado';
+      const playerName = sessionStorage.getItem('mauMauNickname') || 'Convidado';
       
       this.emitEvent('chat_message', {
         message: {
           id: `msg-${Date.now()}`,
           playerId: playerId,
-          nickname: nickname, 
-          message: event.payload.message,
-          timestamp: Date.now(),
+          playerName: playerName, 
+          content: event.payload.message,
+          timestamp: new Date().toISOString(),
         }
       });
     }, 100);

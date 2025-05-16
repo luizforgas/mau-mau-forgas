@@ -27,3 +27,32 @@ export interface EventData<T = any> {
   type: string;
   data: T;
 }
+
+// Adicionando a interface ActiveRoom para compatibilidade com mock-handlers.ts
+export interface ActiveRoom {
+  code: string;
+  name?: string;
+  players: {
+    id: string;
+    nickname: string;
+    isCreator: boolean;
+  }[];
+  createdAt: number;
+  maxPlayers: number;
+  isPrivate: boolean;
+  creatorId: string;
+}
+
+// Função para inicializar o armazenamento global de salas
+export const initializeGlobalRoomStorage = (): void => {
+  if (typeof window !== 'undefined' && !window.activeRoomsMap) {
+    window.activeRoomsMap = new Map<string, ActiveRoom>();
+  }
+}
+
+// Extensão do tipo Window para incluir activeRoomsMap
+declare global {
+  interface Window {
+    activeRoomsMap: Map<string, ActiveRoom>;
+  }
+}

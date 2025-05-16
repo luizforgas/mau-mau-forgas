@@ -26,7 +26,7 @@ const Chat: React.FC = () => {
   };
 
   // Format timestamp
-  const formatTime = (timestamp: number) => {
+  const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit'
@@ -57,10 +57,10 @@ const Chat: React.FC = () => {
               >
                 {msg.playerId !== 'system' && (
                   <span className="text-xs font-medium text-gray-400 mb-1">
-                    {msg.playerId === playerInfo?.playerId ? 'You' : msg.nickname}
+                    {msg.playerId === playerInfo?.playerId ? 'You' : msg.playerName}
                   </span>
                 )}
-                <span className="text-white break-words">{msg.message}</span>
+                <span className="text-white break-words">{msg.content}</span>
                 <span className="text-xs text-gray-500 mt-1 self-end">
                   {formatTime(msg.timestamp)}
                 </span>
