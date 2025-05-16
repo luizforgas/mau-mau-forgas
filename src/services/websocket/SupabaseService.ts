@@ -385,23 +385,25 @@ export class SupabaseService {
           const userId = session.session.user.id;
           const userNickname = payload.nickname || 'Unknown Player';
           
-          // User exists in auth but not in public.users, manually insert them
-          const { error: insertError } = await supabase
+          // User exists in auth but not in public.users, use upsert instead of insert
+          const { error: upsertError } = await supabase
             .from('users')
-            .insert({
+            .upsert({
               id: userId,
               nickname: userNickname
+            }, {
+              onConflict: 'id'
             });
             
-          if (insertError) {
-            console.error('Failed to create user record:', insertError);
+          if (upsertError) {
+            console.error('Failed to create user record:', upsertError);
             this.emit('error', { 
-              message: `Erro ao criar usuário: ${insertError.message}` 
+              message: `Erro ao criar usuário: ${upsertError.message}` 
             });
             return;
           }
           
-          console.log('Created user record for auth user:', userId);
+          console.log('Created or updated user record for auth user:', userId);
         } else {
           this.emit('error', { 
             message: 'Usuário não está autenticado ou não existe no banco de dados.' 
