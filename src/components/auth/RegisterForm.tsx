@@ -11,11 +11,21 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from '@/hooks/use-toast';
 import translations from '@/localization/pt-BR';
 
+// Password regex for strong password policy
+const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{12,}$/;
+
 // Register validation schema
 const registerSchema = z.object({
   email: z.string().email(translations.auth.invalidEmail),
-  password: z.string().min(6, translations.auth.passwordMinLength),
-  nickname: z.string().min(3, translations.auth.nicknameMinLength).max(20, translations.auth.nicknameMaxLength),
+  password: z.string()
+    .min(12, translations.auth.passwordMinLength)
+    .regex(
+      strongPasswordRegex,
+      'A senha deve conter pelo menos 12 caracteres, incluindo letra maiúscula, letra minúscula, número e símbolo.'
+    ),
+  nickname: z.string()
+    .min(3, translations.auth.nicknameMinLength)
+    .max(20, translations.auth.nicknameMaxLength),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -54,6 +64,8 @@ const RegisterForm: React.FC = () => {
         return;
       }
       
+      console.log('Registering user with:', { ...values, password: '********' });
+      
       // Register user
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
@@ -67,6 +79,8 @@ const RegisterForm: React.FC = () => {
       
       if (error) throw error;
       
+      console.log('Registration response:', data);
+      
       if (data.user) {
         toast({
           title: translations.auth.registrationSuccess,
@@ -77,12 +91,12 @@ const RegisterForm: React.FC = () => {
         window.location.href = '/';
       }
     } catch (error: any) {
+      console.error('Registration error:', error);
       toast({
         title: translations.auth.registrationError,
         description: error.message || translations.auth.genericError,
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -142,6 +156,9 @@ const RegisterForm: React.FC = () => {
                 />
               </FormControl>
               <FormMessage />
+              <p className="text-xs text-gray-400 mt-2">
+                {translations.auth.passwordRequirements}
+              </p>
             </FormItem>
           )}
         />

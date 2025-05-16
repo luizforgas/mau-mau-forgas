@@ -1,4 +1,3 @@
-
 export const translations = {
   // Global terms
   app: {
@@ -28,6 +27,7 @@ export const translations = {
     nicknameMinLength: "O apelido deve ter pelo menos 3 caracteres",
     nicknameMaxLength: "O apelido deve ter no máximo 20 caracteres",
     nicknameRequirements: "Apelido deve ter entre 3-20 caracteres",
+    passwordRequirements: 'A senha deve conter pelo menos 12 caracteres, incluindo letra maiúscula, letra minúscula, número e símbolo.',
     continue: "Continuar",
     registrationSuccess: "Cadastro realizado!",
     registrationMessage: "Sua conta foi criada com sucesso",
