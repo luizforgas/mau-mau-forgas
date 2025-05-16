@@ -41,6 +41,7 @@ export const translations = {
     logoutSuccess: "Desconectado",
     logoutMessage: "Você foi desconectado com sucesso",
     logoutError: "Erro ao desconectar",
+    profileLoadError: "Falha ao carregar perfil do usuário. Por favor, tente atualizar a página.",
   },
 
   // Lobby
