@@ -369,6 +369,47 @@ export class SupabaseService {
     try {
       console.log('Creating room with payload:', payload);
       
+      // Verify user exists in public.users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', payload.playerId)
+        .single();
+      
+      if (userError || !userData) {
+        console.error('User not found in public.users table:', userError || 'No user data');
+        
+        // Check if user exists in auth.users but not in public.users
+        const { data: session } = await supabase.auth.getSession();
+        if (session.session) {
+          const userId = session.session.user.id;
+          const userNickname = payload.nickname || 'Unknown Player';
+          
+          // User exists in auth but not in public.users, manually insert them
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: userId,
+              nickname: userNickname
+            });
+            
+          if (insertError) {
+            console.error('Failed to create user record:', insertError);
+            this.emit('error', { 
+              message: `Erro ao criar usuário: ${insertError.message}` 
+            });
+            return;
+          }
+          
+          console.log('Created user record for auth user:', userId);
+        } else {
+          this.emit('error', { 
+            message: 'Usuário não está autenticado ou não existe no banco de dados.' 
+          });
+          return;
+        }
+      }
+      
       // Generate a random room code (6 uppercase letters)
       const generateRoomCode = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';

@@ -82,6 +82,25 @@ const RegisterForm: React.FC = () => {
       console.log('Registration response:', data);
       
       if (data.user) {
+        // Manually insert user into public.users table to ensure it's there
+        try {
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: data.user.id,
+              nickname: values.nickname
+            });
+            
+          if (insertError) {
+            console.warn('Warning: Failed to manually insert user record:', insertError);
+            // Continue anyway as the trigger might still work
+          } else {
+            console.log('Successfully inserted user record manually');
+          }
+        } catch (insertErr) {
+          console.warn('Error during manual user insertion (continuing):', insertErr);
+        }
+        
         toast({
           title: translations.auth.registrationSuccess,
           description: translations.auth.registrationMessage,
